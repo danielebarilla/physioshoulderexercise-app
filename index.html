@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physio Shoulder — Daniele Barillà</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#004640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FisioDB">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<style>
+  :root {
+    color-scheme: light;
+    --pine:    #004640;
+    --pine-l:  #005a52;
+    --pine-xl: #e8f0ef;
+    --alaba:   #d2dfdd;
+    --honey:   #de9e36;
+    --honey-l: #f5c96a;
+    --white:   #ffffff;
+    --gray50:  #f7f8f8;
+    --gray100: #eef0ef;
+    --gray300: #c4ccc9;
+    --gray600: #5a6b68;
+    --gray900: #1a2422;
+    --radius:  9px;
+    --shadow:  0 1px 4px rgba(0,70,64,.08);
+  }
+  @page { margin: 1.5cm; size: A4; }
+  @page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,sans-serif; background:var(--alaba); color:var(--gray900); -webkit-text-size-adjust:100%; font-size:15px; }
+
+  /* ---- NAV ---- */
+  nav {
+    background:var(--pine);
+    display:flex; align-items:center; gap:0;
+    padding:0 16px;
+    position:sticky; top:0; z-index:100;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+    overflow-x:auto; overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  nav::-webkit-scrollbar { display:none; }
+  .nav-logo { display:flex; align-items:center; padding:10px 0; margin-right:20px; flex-shrink:0; }
+  .nav-logo img { height:34px; }
+  .nav-tab {
+    padding:14px 12px 12px; border:none; background:none;
+    border-bottom:3px solid transparent; color:var(--alaba);
+    font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap;
+    transition:all .15s; letter-spacing:.02em; flex-shrink:0;
+  }
+  .nav-tab:hover { color:#fff; background:rgba(255,255,255,.07); }
+  .nav-tab.active { color:var(--honey); border-bottom-color:var(--honey); }
+
+  /* ---- SYNC INDICATOR ---- */
+  .sync-indicator {
+    margin-left:auto; flex-shrink:0; display:flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:99px; cursor:pointer; user-select:none;
+    font-size:11px; font-weight:600; letter-spacing:.02em; white-space:nowrap;
+    background:rgba(255,255,255,.08); transition:background .15s;
+  }
+  .sync-indicator:hover { background:rgba(255,255,255,.16); }
+  .sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--gray300); }
+  .sync-indicator .sync-label { color:var(--alaba); }
+  .sync-indicator.sync-online .sync-dot { background:#3ecf8e; }
+  .sync-indicator.sync-online .sync-label { color:#3ecf8e; }
+  .sync-indicator.sync-offline .sync-dot { background:#e15555; }
+  .sync-indicator.sync-offline .sync-label { color:#ff8a8a; }
+  .sync-indicator.sync-syncing .sync-dot { background:var(--honey); animation:syncPulse 1s infinite ease-in-out; }
+  .sync-indicator.sync-syncing .sync-label { color:var(--honey-l); }
+  .sync-indicator.sync-init .sync-dot { background:var(--gray300); }
+  @keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @media (max-width:768px) { .sync-indicator .sync-label { display:none; } .sync-indicator { padding:6px 8px; } }
+
+  /* ---- LAYOUT ---- */
+  .page { display:none; padding:28px; max-width:1120px; margin:0 auto; }
+  .page.active { display:block; }
+  /* Mobile layout */
+  @media (max-width: 768px) {
+    .page { padding:14px 12px; }
+    .section-header { flex-direction:column; gap:10px; }
+    .section-header .btn { width:100%; justify-content:center; }
+  }
+
+  /* ---- CARDS ---- */
+  .card { background:#ffffff; color:var(--gray900); border:1px solid rgba(222,158,54,.25); border-radius:var(--radius); padding:20px; margin-bottom:14px; box-shadow:var(--shadow); }
+  .card-title { font-size:15px; font-weight:600; color:var(--pine); }
+  .card-sub { font-size:13px; color:var(--gray600); margin-top:3px; }
+  .card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
+
+  /* ---- FORM ---- */
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  .field { display:flex; flex-direction:column; gap:5px; }
+  .field.full { grid-column:1/-1; }
+  label { font-size:11px; font-weight:600; color:var(--gray600); text-transform:uppercase; letter-spacing:.05em; }
+  input,select,textarea {
+    border:1px solid var(--gray300); border-radius:6px;
+    padding:9px 11px; font-size:14px; font-family:inherit;
+    background:var(--gray50); transition:border .15s, box-shadow .15s;
+  }
+  input:focus,select:focus,textarea:focus {
+    outline:none; border-color:var(--honey); background:#fff;
+    box-shadow:0 0 0 3px rgba(222,158,54,.18);
+  }
+  textarea { resize:vertical; min-height:78px; }
+
+  /* ---- BUTTONS ---- */
+  .btn { display:inline-flex; align-items:center; gap:5px; padding:9px 16px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; border:1.5px solid; }
+  .btn-primary { background:var(--pine); color:#fff; border-color:var(--pine); }
+  .btn-primary:hover { background:var(--pine-l); }
+  .btn-honey { background:var(--honey); color:#fff; border-color:var(--honey); }
+  .btn-honey:hover { background:#c8891f; }
+  .btn-secondary { background:#fff; color:var(--pine); border-color:var(--alaba); }
+  .btn-secondary:hover { background:var(--pine-xl); border-color:var(--pine); }
+  .btn-danger { background:#fff; color:#b91c1c; border-color:#fca5a5; }
+  .btn-danger:hover { background:#fef2f2; }
+  .btn-sm { padding:5px 10px; font-size:12px; }
+  .btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* ---- BADGES ---- */
+  .badge { display:inline-block; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:600; }
+  .badge-pine { background:var(--pine-xl); color:var(--pine); border:1px solid rgba(222,158,54,.4); }
+  .badge-honey { background:#fef3d8; color:#92600a; border:1px solid #f5c96a; }
+  .badge-gray { background:var(--gray100); color:var(--gray600); border:1px solid var(--gray300); }
+  .badge-red { background:#fee2e2; color:#991b1b; }
+
+  /* ---- TABLE ---- */
+  .table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--alaba); background:#ffffff; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:10px 14px; background:var(--pine); color:var(--honey); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; white-space:nowrap; }
+  th:first-child { border-radius:var(--radius) 0 0 0; }
+  th:last-child { border-radius:0 var(--radius) 0 0; }
+  td { padding:10px 14px; border-bottom:1px solid var(--gray100); vertical-align:middle; background:#ffffff; color:var(--gray900); }
+  tr:nth-child(even) td { background:#f5f8f7; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#fef6e4 !important; color:var(--gray900); }
+
+  /* ---- SEARCH ---- */
+  .search-bar { display:flex; gap:10px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
+  .search-bar input { flex:1; min-width:200px; }
+
+  /* ---- SECTION HEADER ---- */
+  .section-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+  .section-title { font-size:20px; font-weight:700; color:var(--pine); border-left:4px solid var(--honey); padding-left:12px; }
+  .section-sub { font-size:13px; color:var(--gray600); margin-top:3px; }
+
+  /* ---- EMPTY ---- */
+  .empty { text-align:center; padding:48px 24px; color:var(--gray300); }
+  .empty-icon { font-size:40px; margin-bottom:10px; }
+  .empty p { font-size:14px; color:var(--gray600); }
+
+  /* ---- MODAL ---- */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,30,28,.5); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+  .modal-bg.open { display:flex; }
+  .modal { background:#fff; border-radius:12px; padding:26px; width:93%; max-width:700px; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid var(--honey); }
+  .modal-title { font-size:17px; font-weight:700; color:var(--pine); }
+  .modal-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--gray300); padding:4px; border-radius:4px; }
+  .modal-close:hover { color:var(--pine); background:var(--pine-xl); }
+
+  /* ---- SLOT ESERCIZI ---- */
+  .exercise-slot { display:flex; align-items:center; gap:8px; background:var(--gray50); border:1px solid var(--alaba); border-radius:7px; padding:10px 12px; margin-bottom:7px; }
+  .exercise-slot .grip { color:var(--gray300); font-size:16px; cursor:grab; user-select:none; }
+  .exercise-slot .slot-name { flex:1; font-size:13px; font-weight:600; color:var(--pine); }
+  .exercise-slot .slot-params { display:flex; gap:8px; align-items:center; }
+  .slot-param { display:flex; flex-direction:column; align-items:center; }
+  .slot-param label { font-size:9px; color:var(--gray600); letter-spacing:.03em; }
+  .slot-param input { width:54px; text-align:center; padding:4px 6px; font-size:13px; }
+  .slot-note input { width:150px; }
+
+  /* ---- SCHEDA PRINT PREVIEW ---- */
+  .scheda-preview { border-radius:var(--radius); border:1px solid var(--alaba); overflow:hidden; }
+  .scheda-header {
+    padding:20px 24px 18px;
+    background:var(--pine);
+    border-bottom:4px solid var(--honey);
+  }
+  .scheda-header-inner { display:flex; align-items:flex-start; justify-content:space-between; }
+  .scheda-header h2 { font-size:17px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .scheda-header .meta { font-size:12px; color:var(--alaba); line-height:1.6; }
+  .scheda-header img { height:36px; opacity:.9; }
+  .scheda-section-label { background:var(--honey); padding:6px 24px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#fff; }
+  .esercizio-row {
+    padding:13px 24px; border-bottom:1px solid var(--gray100);
+    display:grid; grid-template-columns:2fr auto; gap:16px; align-items:start;
+    background:#fff;
+  }
+  .esercizio-row:hover { background:var(--pine-xl); }
+  .esercizio-num { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:var(--honey); color:#fff; border-radius:50%; font-size:11px; font-weight:700; margin-right:10px; flex-shrink:0; }
+  .esercizio-nome { font-weight:700; font-size:14px; color:var(--pine); display:flex; align-items:center; }
+  .esercizio-desc { font-size:12px; color:var(--gray600); margin-top:4px; line-height:1.5; padding-left:32px; }
+  .esercizio-params { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start; }
+  .param-box { background:#fef6e4; border:1px solid rgba(222,158,54,.35); border-radius:6px; padding:5px 11px; text-align:center; min-width:55px; }
+  .param-label { font-size:9px; text-transform:uppercase; color:var(--gray600); letter-spacing:.05em; font-weight:600; }
+  .param-val { font-size:14px; font-weight:700; color:var(--honey); margin-top:1px; }
+  .note-row { background:#fef6e4; border-left:4px solid var(--honey); margin:0 24px 10px; padding:7px 12px; font-size:12px; color:#7c5109; border-radius:0 5px 5px 0; }
+  .link-badge { display:inline-flex; align-items:center; gap:4px; background:#fef6e4; border:1px solid var(--honey); border-radius:5px; padding:4px 9px; font-size:11px; font-weight:600; color:#92600a; text-decoration:none; }
+  .link-badge:hover { background:var(--honey); color:#fff; }
+  .scheda-footer { padding:14px 24px; font-size:11px; color:var(--gray600); background:var(--gray50); border-top:1px solid var(--alaba); display:flex; align-items:center; justify-content:space-between; }
+
+  hr { border:none; border-top:1px solid var(--alaba); margin:18px 0; }
+
+
+
+  #mod-giorno-editor .exercise-slot { background:var(--gray50); border:1px solid var(--alaba); border-radius:7px; padding:9px 12px; display:flex; align-items:center; gap:8px; }
+  #mod-giorno-editor .slot-params { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+  .day-btn.active { background:var(--honey)!important; color:#fff!important; border-color:var(--honey)!important; }
+  .giorno-tab { font-size:12px; padding:6px 12px; }
+  #giorni-container .exercise-slot { margin-bottom:6px; }
+
+  /* ═══════════════ RESPONSIVE MOBILE ═══════════════ */
+  @media (max-width: 768px) {
+
+    /* Tabella esercizi: nascondi colonne meno importanti */
+    table th:nth-child(5),
+    table td:nth-child(5),
+    table th:nth-child(7),
+    table td:nth-child(7) { display:none; }
+
+    /* Form grid: 1 colonna su mobile */
+    .form-grid { grid-template-columns:1fr !important; }
+    .form-grid .field.full { grid-column:1 !important; }
+
+    /* Genera scheda: colonna singola */
+    #page-genera > div > div:first-child + div { display:block; }
+    #page-genera > div { grid-template-columns:1fr !important; }
+
+    /* Card esercizio nella scheda: stack verticale */
+    .esercizio-row { grid-template-columns:1fr !important; gap:10px; }
+    .esercizio-params { justify-content:flex-start; }
+
+    /* Slot esercizi nel builder: scroll orizzontale params */
+    .exercise-slot { flex-wrap:wrap; }
+    .exercise-slot .slot-params { flex-wrap:wrap; gap:6px; }
+    .slot-param input { width:60px !important; }
+    .slot-note input { width:120px !important; }
+
+    /* Modal: fullscreen su mobile */
+    .modal-bg { align-items:flex-end; }
+    .modal {
+      width:100% !important;
+      max-width:100% !important;
+      max-height:92vh;
+      border-radius:16px 16px 0 0 !important;
+      padding:20px 16px;
+    }
+
+    /* Bottoni: più grandi su touch */
+    .btn { padding:10px 14px; font-size:14px; }
+    .btn-sm { padding:8px 12px; font-size:13px; }
+    .btn-group { gap:6px; }
+
+    /* Card header: stack verticale */
+    .card-header { flex-direction:column; gap:10px; align-items:flex-start; }
+    .card-header .btn-group { width:100%; }
+    .card-header .btn-group .btn { flex:1; justify-content:center; }
+
+    /* Scheda preview su mobile */
+    .scheda-header h2 { font-size:15px; }
+    .scheda-header .meta { font-size:11px; }
+    .scheda-header img { height:28px; }
+    .esercizio-nome { font-size:13px; }
+    .esercizio-desc { font-size:11px; }
+    .param-box { min-width:46px; padding:4px 8px; }
+    .param-val { font-size:13px; }
+
+    /* Day buttons e giorno tabs */
+    .day-btn, .giorno-tab { font-size:12px !important; padding:7px 10px !important; }
+
+    /* Section title */
+    .section-title { font-size:17px; }
+
+    /* Search bar: colonna */
+    .search-bar { flex-direction:column; align-items:stretch; }
+    .search-bar input, .search-bar select { width:100% !important; }
+  }
+
+  @media (max-width: 480px) {
+    .nav-logo img { height:28px; }
+    .nav-tab { font-size:11px; padding:12px 9px 10px; }
+    .param-box { min-width:40px; }
+    .esercizio-row { padding:10px 14px; }
+  }
+
+  @media print {
+    nav, .btn-group, .no-print, .modal-header .modal-close { display:none!important; }
+    body { background:#fff; }
+    .scheda-preview { border:none; }
+    .esercizio-row:hover { background:#fff; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><img src="data:image/png;base64,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" alt="Physio Shoulder"></div>
+  <button class="nav-tab active" onclick="goTo('esercizi',this)">📋 Esercizi</button>
+  <button class="nav-tab" onclick="goTo('schede',this)">🗂 Schede</button>
+  <button class="nav-tab" onclick="goTo('genera',this)">✨ Genera scheda</button>
+  <button class="nav-tab" onclick="goTo('pazienti',this)">👤 Pazienti</button>
+  <div id="sync-indicator" class="sync-indicator sync-init" onclick="manualSync()" title="Stato sincronizzazione — tocca per forzare il sync">
+    <span class="sync-dot"></span><span class="sync-label">Avvio…</span>
+  </div>
+</nav>
+
+<!-- PAGE: ESERCIZI -->
+<div id="page-esercizi" class="page active">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Database esercizi</div>
+      <div class="section-sub" id="count-esercizi">0 esercizi salvati</div>
+    </div>
+    <button class="btn btn-primary" id="btn-nuovo-eserc">+ Nuovo esercizio</button>
+  </div>
+  <div class="search-bar">
+    <input type="text" id="search-esercizi" placeholder="Cerca per nome, zona, descrizione…" oninput="renderEsercizi()">
+    <select id="filter-zona" onchange="renderEsercizi()" style="width:190px">
+      <option value="">Tutte le zone</option>
+      <optgroup label="─ Parte Superiore ─">
+        <option>Petto</option>
+        <option>Spalle</option>
+                <option>Dorsali</option>
+        <option>Bicipiti</option>
+        <option>Tricipiti</option>
+      </optgroup>
+      <optgroup label="─ Parte Inferiore ─">
+        <option>Quadricipiti</option>
+        <option>Femorali</option>
+        <option>Glutei</option>
+                <option>Adduttori/Abduttori</option>
+        <option>Polpacci</option>
+      </optgroup>
+      <optgroup label="─ Core ─">
+        <option>Addome</option>
+        <option>Mobilità</option>
+      </optgroup>
+      <optgroup label="─ Cardio ─">
+        <option>Cardio</option>
+        <option>Warm-up</option>
+      </optgroup>
+    </select>
+    <select id="filter-fase" onchange="renderEsercizi()" style="width:180px">
+      <option value="">Tutti i livelli</option>
+      <option>Post-infortunio</option>
+      <option>Fondamentali</option>
+      <option>Complementari</option>
+    </select>
+    <button class="btn btn-secondary btn-sm" onclick="resetFiltri()" title="Azzera tutti i filtri" style="flex-shrink:0">✕ Reset</button>
+    <select id="filter-mat" onchange="renderEsercizi()" style="width:180px">
+      <option value="">Tutta l'attrezzatura</option>
+      <option>Corpo libero</option>
+      <option>Elastico</option>
+      <option>Manubri</option>
+      <option>Bilanciere</option>
+      <option>TRX</option>
+      <option>Cavi</option>
+      <option>Macchina</option>
+      <option>Kettlebell</option>
+      <option>Smith machine</option>
+      <option>Pallone / Swiss ball</option>
+      <option>Gradino / step</option>
+      <option>Panca</option>
+      <option>Cyclette / bike recumbent</option>
+      <option>Fitball</option>
+      <option>Bastone</option>
+    </select>
+  </div>
+  <div id="list-esercizi"></div>
+</div>
+
+<!-- PAGE: SCHEDE -->
+<div id="page-schede" class="page">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Schede salvate</div>
+      <div class="section-sub" id="count-schede">0 schede</div>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('genera',document.querySelectorAll('.nav-tab')[2])">+ Crea nuova scheda</button>
+  </div>
+  <div id="list-schede"></div>
+</div>
+
+<!-- PAGE: GENERA -->
+<div id="page-genera" class="page">
+  <div class="section-header">
+    <div class="section-title">Genera scheda paziente</div>
+    <div class="section-sub">Compila il profilo, scegli i giorni e gli esercizi</div>
+  </div>
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start">
+
+    <!-- COLONNA SX: form -->
+    <div>
+      <!-- DATI PAZIENTE -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">Dati paziente</div>
+        <div class="form-grid">
+          <div class="field full"><label>Nome paziente *</label><input id="g-nome" placeholder="Es. Mario Rossi"></div>
+          <div class="field"><label>Data</label><input id="g-data" type="date"></div>
+          <div class="field"><label>Zona target</label>
+            <input id="g-zona" type="text" placeholder="Es. Spalla destra, Ginocchio sx, Lombare…">
+          </div>
+          <div class="field"><label>Intensità</label>
+            <select id="g-fase" onchange="renderPicker()">
+              <option value="">— tutti i livelli —</option>
+              <option>Post-infortunio</option>
+              <option>Fondamentali</option>
+              <option>Complementari</option>
+            </select>
+          </div>
+          <div class="field full"><label>Note generali per il paziente</label>
+            <textarea id="g-note-generali" placeholder="Es. Eseguire gli esercizi a piedi scalzi su superficie piana. Riscaldarsi 5 minuti prima di iniziare…" style="min-height:72px"></textarea>
+          </div>
+          <div class="field full"><label>Obiettivi / note cliniche (uso interno)</label>
+            <textarea id="g-obiettivi" placeholder="Es. rinforzo cuffia dei rotatori, miglioramento ROM…" style="min-height:60px"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- GIORNI -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Struttura settimanale</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label>Numero di giorni</label>
+            <div style="display:flex;gap:8px;margin-top:2px">
+              <button class="btn btn-secondary day-btn active" data-n="1" onclick="setGiorni(1,this)">1 giorno</button>
+              <button class="btn btn-secondary day-btn" data-n="2" onclick="setGiorni(2,this)">2 giorni</button>
+              <button class="btn btn-secondary day-btn" data-n="3" onclick="setGiorni(3,this)">3 giorni</button>
+            </div>
+          </div>
+          <div class="field full">
+            <label>Giorno da modificare</label>
+            <div id="giorno-tabs" style="display:flex;gap:6px;margin-top:2px">
+              <button class="btn btn-primary giorno-tab" data-g="0" onclick="switchGiorno(0,this)">Giorno 1</button>
+            </div>
+          </div>
+          <div class="field full">
+            <label>Nome del giorno (opzionale)</label>
+            <input id="g-giorno-nome" placeholder="Es. Push / Pull / Gambe / Fondamentali" oninput="aggiornaGiornoNome()">
+          </div>
+        </div>
+      </div>
+
+      <!-- AGGIUNGI ESERCIZIO -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:11px">Aggiungi esercizio</div>
+        <div class="form-grid" style="margin-bottom:9px">
+          <div class="field">
+            <label>Distretto</label>
+            <select id="g-distretto" onchange="renderPicker()">
+              <option value="">— tutti —</option>
+              <option value="superiore">Parte Superiore</option>
+              <option value="inferiore">Parte Inferiore</option>
+              <option value="core">Core</option>
+              <option value="cardio">Cardio</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Intensità</label>
+            <select id="g-fase" onchange="renderPicker()">
+              <option value="">— tutti —</option>
+              <option>Post-infortunio</option>
+              <option>Fondamentali</option>
+              <option>Complementari</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Attrezzatura</label>
+            <select id="g-mat" onchange="renderPicker()">
+              <option value="">Tutta l'attrezzatura</option>
+      <option>Corpo libero</option>
+      <option>Elastico</option>
+      <option>Manubri</option>
+      <option>Bilanciere</option>
+      <option>TRX</option>
+      <option>Cavi</option>
+      <option>Macchina</option>
+      <option>Kettlebell</option>
+      <option>Smith machine</option>
+      <option>Pallone / Swiss ball</option>
+      <option>Gradino / step</option>
+      <option>Panca</option>
+      <option>Cyclette / bike recumbent</option>
+      <option>Fitball</option>
+      <option>Bastone</option>
+            </select>
+          </div>
+        </div>
+        <select id="g-picker" style="width:100%;margin-bottom:9px">
+          <option value="">— scegli esercizio —</option>
+        </select>
+        <button class="btn btn-secondary" style="width:100%" onclick="addEsercizioToScheda()">+ Aggiungi al giorno attivo</button>
+      </div>
+    </div>
+
+    <!-- COLONNA DX: preview scheda viva -->
+    <div>
+      <div id="giorni-container"></div>
+      <div class="btn-group no-print" style="margin-top:4px;flex-wrap:wrap">
+        <button class="btn btn-honey" onclick="salvaScheda()">💾 Salva scheda</button>
+        <button class="btn btn-primary" onclick="anteprimaScheda()">👁 Anteprima</button>
+        <button class="btn btn-secondary" onclick="stampaScheda()">🖨 Stampa / PDF</button>
+        <button class="btn btn-secondary" onclick="condividiScheda(null)" style="background:#25D366;color:#fff;border-color:#25D366">📱 Condividi</button>
+        <button class="btn btn-danger btn-sm" onclick="resetScheda()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: PAZIENTI -->
+<div id="page-pazienti" class="page">
+  <div class="section-header">
+    <div class="section-title">Archivio pazienti</div>
+    <div class="section-sub">Schede raggruppate per paziente</div>
+  </div>
+  <div id="list-pazienti"></div>
+</div>
+
+<!-- MODAL: NUOVO/MODIFICA ESERCIZIO -->
+<div class="modal-bg" id="modal-esercizio">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-eserc-title">Nuovo esercizio</div>
+      <button class="modal-close" onclick="closeModal('modal-esercizio')">✕</button>
+    </div>
+    <input type="hidden" id="eserc-edit-id">
+    <div class="form-grid">
+      <div class="field full"><label>Nome esercizio *</label><input id="e-nome" placeholder="Es. Y Raise TRX"></div>
+      <div class="field"><label>Zona anatomica *</label>
+        <select id="e-zona">
+          <option value="">— seleziona —</option>
+          <optgroup label="Parte Superiore">
+            <option>Petto</option>
+            <option>Spalle</option>
+                        <option>Dorsali</option>
+            <option>Bicipiti</option>
+            <option>Tricipiti</option>
+          </optgroup>
+          <optgroup label="Parte Inferiore">
+            <option>Quadricipiti</option>
+            <option>Femorali</option>
+            <option>Glutei</option>
+                        <option>Adduttori/Abduttori</option>
+            <option>Polpacci</option>
+          </optgroup>
+          <optgroup label="Core / Addome">
+            <option>Addome</option>
+            <option>Mobilità</option>
+          </optgroup>
+          <optgroup label="Cardio">
+            <option>Cardio</option>
+            <option>Warm-up</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>Fase riabilitativa</label>
+        <select id="e-fase">
+          <option value="">— seleziona —</option>
+          <option>Post-infortunio</option>
+          <option>Fondamentali</option>
+          <option>Complementari</option>
+        </select>
+      </div>
+      <div class="field"><label>Serie (default)</label><input id="e-serie" type="number" value="3" min="1" max="20"></div>
+      <div class="field"><label>Ripetizioni / Tempo</label><input id="e-rip" placeholder="Es. 12 rip. / 30 sec"></div>
+      <div class="field"><label>Recupero</label><input id="e-rec" placeholder="Es. 60&quot;"></div>
+      <div class="field"><label>Materiale</label>
+        <select id="e-mat">
+          <option>Corpo libero</option>
+          <option>Elastico</option>
+          <option>Manubri</option>
+          <option>Bilanciere</option>
+          <option>TRX</option>
+          <option>Cavi</option>
+          <option>Macchina</option>
+          <option>Kettlebell</option>
+          <option>Smith machine</option>
+          <option>Pallone / Swiss ball</option>
+          <option>Gradino / step</option>
+          <option>Panca</option>
+          <option>Cyclette / bike recumbent</option>
+          <option>Bastone</option>
+          <option>Altro</option>
+        </select>
+      </div>
+      <div class="field"><label>% Massimale / Intensità</label><input id="e-pct" placeholder="Es. 60%  /  BW"></div>
+      <div class="field full"><label>Link video (YouTube)</label><input id="e-link" placeholder="https://youtu.be/…"></div>
+      <div class="field full"><label>Descrizione / esecuzione</label><textarea id="e-desc" placeholder="Posizione di partenza, movimento, errori da evitare…"></textarea></div>
+      <div class="field full"><label>Note per il paziente</label><textarea id="e-note" style="min-height:58px" placeholder="Es. Fermarsi se compare dolore. Non iperestendere il ginocchio."></textarea></div>
+    </div>
+    <hr>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="salvaEsercizio()">Salva esercizio</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-esercizio')">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ANTEPRIMA -->
+<div class="modal-bg" id="modal-preview">
+  <div class="modal" style="max-width:740px">
+    <div class="modal-header">
+      <div class="modal-title">Anteprima scheda</div>
+      <button class="modal-close" onclick="closeModal('modal-preview')">✕</button>
+    </div>
+    <div id="preview-content"></div>
+    <hr>
+    <div class="btn-group no-print">
+      <button class="btn btn-primary" onclick="stampaScheda()">🖨 Stampa / Salva PDF</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-preview')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: MODIFICA SCHEDA -->
+<div class="modal-bg" id="modal-modifica">
+  <div class="modal" style="max-width:860px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-mod-title">Modifica scheda</div>
+        <div style="font-size:12px;color:var(--gray600);margin-top:3px" id="modal-mod-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-modifica')">✕</button>
+    </div>
+
+    <!-- STORICO VERSIONI -->
+    <div id="mod-storico-wrap" style="margin-bottom:16px;display:none">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray600);margin-bottom:8px">📅 Storico versioni</div>
+      <div id="mod-storico"></div>
+    </div>
+
+    <!-- FORM MODIFICA -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div class="field">
+        <label>Nome paziente</label>
+        <input id="mod-nome" type="text">
+      </div>
+      <div class="field">
+        <label>Data aggiornamento</label>
+        <input id="mod-data" type="date">
+      </div>
+      <div class="field">
+        <label>Zona target</label>
+        <input id="mod-zona" type="text" placeholder="Es. Spalla destra, Ginocchio sx, Lombare…">
+      </div>
+      <div class="field">
+        <label>Intensità</label>
+        <select id="mod-fase">
+          <option value="">— tutti i livelli —</option>
+          <option>Post-infortunio</option>
+          <option>Fondamentali</option>
+          <option>Complementari</option>
+        </select>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Note generali per il paziente</label>
+        <textarea id="mod-note-generali" style="min-height:64px"></textarea>
+      </div>
+    </div>
+
+    <!-- GIORNI EDITOR -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray600)">Esercizi per giorno</div>
+        <div style="display:flex;gap:6px" id="mod-giorno-tabs"></div>
+      </div>
+      <div id="mod-giorno-editor"></div>
+
+      <!-- Aggiungi esercizio in modifica -->
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+        <select id="mod-distretto" onchange="renderModPicker()" style="flex:1;min-width:120px">
+          <option value="">— distretto —</option>
+          <option value="superiore">Parte Superiore</option>
+          <option value="inferiore">Parte Inferiore</option>
+          <option value="core">Core</option>
+          <option value="cardio">Cardio</option>
+        </select>
+        <select id="mod-mat" onchange="renderModPicker()" style="flex:1;min-width:120px">
+          <option value="">Tutta l'attrezzatura</option>
+      <option>Corpo libero</option>
+      <option>Elastico</option>
+      <option>Manubri</option>
+      <option>Bilanciere</option>
+      <option>TRX</option>
+      <option>Cavi</option>
+      <option>Macchina</option>
+      <option>Kettlebell</option>
+      <option>Smith machine</option>
+      <option>Pallone / Swiss ball</option>
+      <option>Gradino / step</option>
+      <option>Panca</option>
+      <option>Cyclette / bike recumbent</option>
+      <option>Fitball</option>
+      <option>Bastone</option>
+        </select>
+        <select id="mod-picker" style="flex:2;min-width:160px">
+          <option value="">— scegli esercizio —</option>
+        </select>
+        <button class="btn btn-secondary" onclick="modAddEsercizio()">+ Aggiungi</button>
+      </div>
+    </div>
+
+    <hr>
+    <div class="btn-group">
+      <button class="btn btn-honey" onclick="salvaModifica()">💾 Salva come nuova versione</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-modifica')">Annulla</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- PRINT FRAME (mobile-safe) -->
+<div id="print-frame" style="display:none"></div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" style="
+  display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--pine); color:#fff; padding:12px 24px; border-radius:99px;
+  font-size:14px; font-weight:600; z-index:9999;
+  box-shadow:0 4px 20px rgba(0,0,0,.25); white-space:nowrap;
+  border-left:4px solid var(--honey); pointer-events:none;
+  transition:opacity .3s;
+"></div>
+
+<script>
+const LOGO = "data:image/png;base64,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";
+
+// ---- DATA ----
+let esercizi = [];
+let schede   = [];
+let schedaCorrente = [];
+
+function seedEsercizi() {
+  return [
+    {id:uid(),nome:"Pull apart (warm-up)",zona:"Spalle",fase:"Post-infortunio",serie:1,rip:"30",rec:"—",mat:"Elastico",pct:"",desc:"Tirare l'elastico orizzontalmente portando le mani ai lati del petto. Attiva i rotatori esterni e i romboidei.",note:"Warm-up fondamentale per spalla. Eseguire prima di ogni seduta superiore.",link:"https://youtu.be/eZwnwWMkEL4"},
+    {id:uid(),nome:"Y Raise TRX",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"90\"",mat:"TRX",pct:"",desc:"Con il TRX corpo inclinato indietro, sollevare le braccia a Y sopra la testa attivando i muscoli della cuffia e del trapezio inferiore.",note:"Mantenere le scapole depresse. Ottimo per instabilità di spalla.",link:"https://youtu.be/TPzT7Ss0U-E"},
+    {id:uid(),nome:"Halo (warm-up)",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"1 giro",rec:"—",mat:"Kettlebell",pct:"5kg",desc:"Ruotare il kettlebell attorno alla testa mantenendo il core contratto. Warm-up rotatorio per la spalla.",note:"Peso leggero (5kg). Attivazione pre-allenamento spalla.",link:"https://www.youtube.com/watch?v=wJcmanVh5EE"},
+    {id:uid(),nome:"Inclined DB bench press",zona:"Petto",fase:"Fondamentali",serie:5,rip:"8",rec:"45\"",mat:"Manubri",pct:"60%",desc:"Panca inclinata, distensione con manubri. Traiettoria leggermente obliqua verso il petto superiore.",note:"Ritorno lento e controllato.",link:"https://youtu.be/LUxWvGRpwrk"},
+    {id:uid(),nome:"Landmine press",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"8",rec:"90\"",mat:"Bilanciere (landmine)",pct:"65%",desc:"Press con bilanciere a un angolo fisso. Spingere diagonalmente verso l'alto con un braccio solo.",note:"Ottimo per spalle con ROM ridotto.",link:"https://youtu.be/9OW4SONxuGI"},
+    {id:uid(),nome:"Australian pull up",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:"90\"",mat:"Corpo libero / sbarra",pct:"BW",desc:"Rematore a corpo libero. Corpo inclinato, talloni a terra, tirare il petto verso la sbarra.",note:"Corpo rigido come una tavola. Intensità modulabile con l'inclinazione.",link:"https://www.youtube.com/watch?v=-nn7X16rDG8"},
+    {id:uid(),nome:"Rear delt fly machine",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"10",rec:"30\"",mat:"Macchina",pct:"50%",desc:"Aperture per deltoide posteriore alla macchina. Aprire le braccia lateralmente con gomiti leggermente flessi.",note:"Focus sulla retrazione scapolare e deltoide posteriore.",link:"https://youtu.be/gh0g-BR1koA"},
+    {id:uid(),nome:"Single arm DB Rows",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"8+8",rec:"60\"",mat:"Manubri",pct:"60%",desc:"Rematore monolaterale con manubrio, ginocchio sul panchetto. Portare il manubrio verso l'anca contraendo il dorsale.",note:"Non ruotare il bacino.",link:"https://youtu.be/ZRSGpBUVcNw"},
+    {id:uid(),nome:"Wall squat (Swiss ball)",zona:"Quadricipiti",fase:"Post-infortunio",serie:2,rip:"20-28",rec:"90\"",mat:"Pallone / Swiss ball",pct:"",desc:"Squat isometrico contro il muro con Swiss ball. Scendere fino a 90° e mantenere la posizione.",note:"Swiss ball per ridurre lo stress patello-femorale. Piedi leggermente in avanti.",link:"https://youtu.be/vujBdEdSj5M"},
+    {id:uid(),nome:"Leg extension",zona:"Quadricipiti",fase:"Post-infortunio",serie:3,rip:"10",rec:"60\"",mat:"Macchina",pct:"",desc:"Estensione del ginocchio alla macchina. Movimento controllato in entrambe le fasi.",note:"Evitare iperestensione finale. Utile per rinforzo del quadricipite isolato.",link:"https://www.youtube.com/watch?v=uBM6IoEiXwM"},
+    {id:uid(),nome:"Seated leg curl",zona:"Femorali",fase:"Post-infortunio",serie:4,rip:"8-15",rec:"45-60\"",mat:"Macchina",pct:"70%",desc:"Leg curl seduto. Flettere il ginocchio contro resistenza in modo controllato.",note:"Fase eccentrica lenta (3 secondi).",link:"https://youtu.be/UqeOB0jve20"},
+    {id:uid(),nome:"Steps up (gradino >30cm)",zona:"Affondi",fase:"Post-infortunio",serie:3,rip:"15 per lato",rec:"60\"",mat:"Gradino / step",pct:"",desc:"Salire su un gradino alto almeno 30cm con una gamba sola. Controllare sia la salita che la discesa.",note:"Gradino circa 30cm. Busto eretto, ginocchio in allineamento con il piede.",link:"https://www.youtube.com/watch?v=X_oNQX4srHc"},
+    {id:uid(),nome:"TRX Leg Curl",zona:"Femorali",fase:"Fondamentali",serie:4,rip:"8",rec:"120\"",mat:"TRX",pct:"",desc:"Supino con i talloni nel TRX, sollevare il bacino e flettere le ginocchia portando i talloni verso i glutei.",note:"Eccellente per rinforzo ischiocrurale funzionale. Progressione: monopodalico.",link:"https://www.youtube.com/watch?v=JcJ2i2gUW3o"},
+    {id:uid(),nome:"Goblet Squat",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"15",rec:"90\"",mat:"Kettlebell / manubrio",pct:"",desc:"Squat con kettlebell o manubrio tenuto al petto. Scendere mantenendo il busto eretto e le ginocchia in asse con i piedi.",note:"Ottimo per mobilità caviglia e controllo del ginocchio.",link:"https://youtu.be/6vjkqXk7th0"},
+    {id:uid(),nome:"Hip Thrust single leg",zona:"Glutei",fase:"Fondamentali",serie:2,rip:"15+15",rec:"90\"",mat:"Panca",pct:"",desc:"Hip thrust monopodalico con spalle sulla panca. Spingere il bacino verso l'alto contraendo il gluteo.",note:"Fondamentale per il rinforzo del grande gluteo. Allineamento anca-spalla.",link:"https://youtu.be/J3qfu-rQgus"},
+    {id:uid(),nome:"Romanian Deadlift",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"60\"",mat:"Bilanciere / manubri",pct:"75%",desc:"Stacco rumeno: partenza eretta, cerniera dell'anca mantenendo la schiena neutra, fino a sentire stiramento degli ischio-crurali.",note:"Non flettere le ginocchia eccessivamente.",link:"https://youtu.be/bT5OOBgY4bc"},
+    {id:uid(),nome:"Abductor machine",zona:"Adduttori/Abduttori",fase:"Post-infortunio",serie:3,rip:"15-20",rec:"30\"",mat:"Macchina",pct:"",desc:"Abduzione dell'anca alla macchina verso l'esterno. Attivazione del medio gluteo.",note:"Movimento controllato, non usare l'inerzia.",link:"https://youtu.be/V7YHfRT2PLE"},
+    {id:uid(),nome:"Donkey Kick",zona:"Glutei",fase:"Post-infortunio",serie:2,rip:"10 per lato",rec:"30\"",mat:"Corpo libero",pct:"",desc:"Quadrupedica: estendere una gamba posteriormente verso l'alto contraendo il gluteo. Colonna lombare dritta.",note:"Non iperestendere la colonna lombare. Core contratto.",link:"https://youtu.be/SJ1Xuz9D-ZQ"},
+    {id:uid(),nome:"Back extension",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"60\"",mat:"Panca / macchina",pct:"10kg",desc:"Iperestensione del busto sulla panca apposita. Estendere la colonna contraendo i paravertebrali e i glutei.",note:"Non iperestendere oltre il neutro.",link:"https://youtu.be/nk7x3eZgsmM"},
+    {id:uid(),nome:"Good morning",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"—",mat:"Bilanciere / corpo libero",pct:"",desc:"Bilanciere sulle spalle, cerniera dell'anca mantenendo la schiena neutra fino a busto parallelo al suolo.",note:"Warm-up per ischio-crurali e paravertebrali. Peso leggero.",link:"https://www.youtube.com/watch?v=YA-h3n9L4YU"},
+    {id:uid(),nome:"Shoulder mobility",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"30\"",mat:"Corpo libero",pct:"",desc:"Cerchi, rotazioni e movimenti combinati per migliorare il ROM articolare della spalla.",note:"Massimo range articolare disponibile senza dolore.",link:""},
+    {id:uid(),nome:"Woodstick mobility",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"15",rec:"30\"",mat:"Bastone",pct:"",desc:"Esercizi di mobilità del rachide con bastone. Rotazioni, estensioni e flessioni guidate.",note:"Massimo range articolare. Niente dolore.",link:""},
+    {id:uid(),nome:"Scorpion",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"10 per lato",rec:"—",mat:"Corpo libero",pct:"",desc:"Prono: portare un piede verso la mano opposta ruotando il bacino e la colonna.",note:"Non forzare la rotazione oltre il comfort.",link:"https://www.youtube.com/watch?v=7GjzFFdUnQQ"},
+    {id:uid(),nome:"Standing Calf Raise",zona:"Polpacci",fase:"Fondamentali",serie:3,rip:"10-25",rec:"30\"",mat:"Corpo libero / macchina",pct:"50%",desc:"Sollevamento dei talloni in piedi. Salire sulle punte lentamente e scendere controllando.",note:"Ampiezza massima di movimento.",link:"https://youtu.be/g_E7_q1z2bo"},
+    {id:uid(),nome:"Turkish Get up",zona:"Addome",fase:"Complementari",serie:5,rip:"8+8",rec:"60\"",mat:"Kettlebell",pct:"8kg",desc:"Movimento complesso dal suolo alla posizione eretta con kettlebell sopra la testa. Richiede coordinazione e stabilità.",note:"8kg o più. Eseguire lentamente, ogni fase deve essere controllata.",link:"https://youtu.be/-_zTytmHM94"},
+    {id:uid(),nome:"Side Plank Reach Through",zona:"Addome",fase:"Fondamentali",serie:3,rip:"5 per lato",rec:"60\"",mat:"Corpo libero / disco",pct:"2kg",desc:"Side plank, ruotare il busto portando il braccio libero sotto il corpo e poi verso il soffitto.",note:"Aggiungere carico (2kg+) progressivamente.",link:"https://youtu.be/-ruAdV34H54"},
+    {id:uid(),nome:"Back Squat",zona:"Quadricipiti",fase:"Complementari",serie:4,rip:"8",rec:"90\"",mat:"Bilanciere",pct:"75%",desc:"Squat con bilanciere sulle spalle. Scendere fino a parallelismo mantenendo la schiena neutra.",note:"Core contratto, ginocchia in asse con i piedi.",link:"https://youtu.be/QcmonZUuumg"},
+    {id:uid(),nome:"BB Deadlift",zona:"Femorali",fase:"Complementari",serie:5,rip:"5",rec:"90\"",mat:"Bilanciere",pct:"80%",desc:"Stacco da terra con bilanciere. Posizione di forza con schiena neutra, spingere il suolo con i piedi.",note:"Non arrotondare la colonna. Esercizio avanzato.",link:"https://youtu.be/yPqv3ejnZvc"},
+    {id:uid(),nome:"Bike recumbent (warm-up)",zona:"Cardio",fase:"Post-infortunio",serie:1,rip:"5 minuti",rec:"—",mat:"Cyclette / bike recumbent",pct:"40W",desc:"Pedalata su bike recumbent a bassa resistenza come attivazione cardiovascolare e articolare.",note:"40W in warm-up, 20W in scarico finale. Resistenza molto bassa.",link:""},
+    {id:uid(),nome:"Inclined DB pect fly",zona:"Petto",fase:"Fondamentali",serie:2,rip:"20",rec:'60"',mat:"Manubri",pct:"",desc:"Panca inclinata, aprire le braccia con gomiti leggermente flessi controllando la discesa. Risalire contraendo i pettorali.",note:"Controllo eccentrico fondamentale. Evitare apertura eccessiva in fase acuta.",link:"https://youtu.be/JSDpq14vCZ8"},
+    {id:uid(),nome:"Bench press DB",zona:"Petto",fase:"Complementari",serie:5,rip:"5",rec:'120"',mat:"Manubri",pct:"",desc:"Distensione su panca con manubri. Portare i manubri all'altezza del petto e spingere verticalmente.",note:"Traiettoria neutra. Presa salda.",link:"https://youtu.be/n8CskqpOPek"},
+    {id:uid(),nome:"Incline bend over barbell row",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"4",rec:'120"',mat:"Bilanciere",pct:"",desc:"Busto inclinato su panca, rematore con bilanciere verso l'addome. Focalizzarsi sulla retrazione scapolare.",note:"Non iperestendere il rachide. Movimento controllato.",link:"https://www.youtube.com/watch?v=2cGfXlLaJT0"},
+    {id:uid(),nome:"DB Shoulder press",zona:"Spalle",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Shoulder press con manubri seduto o in piedi. Spingere verticalmente senza estendere la colonna.",note:"Evitare anteposizione della testa. Scapole stabili.",link:"https://youtu.be/TsduLWuhlFM"},
+    {id:uid(),nome:"Military press",zona:"Spalle",fase:"Complementari",serie:3,rip:"6",rec:'120"',mat:"Bilanciere",pct:"",desc:"Press bilanciere da seduto o in piedi, spingere il bilanciere verticalmente sopra la testa.",note:"Core contratto, non iperestendere la zona lombare.",link:"https://www.youtube.com/watch?v=p012eiVWRq0"},
+    {id:uid(),nome:"DB triceps kickback",zona:"Tricipiti",fase:"Fondamentali",serie:4,rip:"8",rec:'120"',mat:"Manubri",pct:"",desc:"Busto parallelo al suolo, estendere il gomito portando il manubrio posteriormente. Gomito fisso.",note:"Mantenere il gomito alto e stabile durante tutta l'esecuzione.",link:"https://www.youtube.com/watch?v=bTLivumVV-0"},
+    {id:uid(),nome:"DB Biceps curl",zona:"Bicipiti",fase:"Fondamentali",serie:4,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Curl con manubri, rotazione del polso durante la salita (supinazione). Gomiti fermi ai fianchi.",note:"Non usare l'inerzia del busto.",link:"https://youtu.be/XE_pHwbst04"},
+    {id:uid(),nome:"Sit up",zona:"Addome",fase:"Fondamentali",serie:3,rip:"30",rec:'60"',mat:"Corpo libero",pct:"",desc:"Sit up classico. Partenza supina con ginocchia flesse, portare il busto verso le cosce.",note:"Movimento controllato. Non tirare il collo con le mani.",link:"https://youtu.be/uGePJVHZI5k"},
+    {id:uid(),nome:"Inverted Crunch",zona:"Addome",fase:"Fondamentali",serie:3,rip:"20",rec:'60"',mat:"Corpo libero",pct:"",desc:"Crunch inverso: supino con gambe sollevate, portare le ginocchia verso il petto sollevando il bacino.",note:"Movimento lento e controllato. Focus sulla zona addominale bassa.",link:"https://youtu.be/tYmVaG_S0hE"},
+    {id:uid(),nome:"Russian Twist",zona:"Addome",fase:"Fondamentali",serie:3,rip:"20",rec:'30"',mat:"Corpo libero / peso",pct:"",desc:"Seduto con busto inclinato a 45 gradi, ruotare il busto da un lato all'altro portando le mani lateralmente.",note:"Movimento rotatorio controllato. Piedi sollevati per aumentare l'intensita.",link:"https://youtu.be/wkD8rjkodUI"},
+    {id:uid(),nome:"Leg Swing (warm-up)",zona:"Anca",fase:"Post-infortunio",serie:1,rip:"2 minuti",rec:"—",mat:"Corpo libero",pct:"",desc:"Oscillazioni della gamba in avanti e indietro e lateralmente. Warm-up per anca e ischio-crurali.",note:"Eseguire con appoggio. Ampiezza progressiva.",link:"https://youtu.be/OB0GjxpPGS0"},
+    {id:uid(),nome:"TRX Squat + Overhead press",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"10",rec:'60"',mat:"TRX",pct:"",desc:"Squat al TRX con spinta delle braccia verso l'alto nella fase di risalita. Esercizio combinato.",note:"Coordinare il movimento di arti inferiori e superiori.",link:"https://www.youtube.com/watch?v=8VMN6ReT0yU"},
+    {id:uid(),nome:"DB alternate Forward Lunges",zona:"Affondi",fase:"Fondamentali",serie:2,rip:"10+10",rec:'60"',mat:"Manubri",pct:"50%",desc:"Affondi alternati in avanti con manubri. Passo ampio, ginocchio anteriore non oltre la punta del piede.",note:"Busto eretto durante tutto il movimento.",link:"https://youtu.be/t7DBjlOTwAk"},
+    {id:uid(),nome:"Lat machine (wide grip)",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"fino a cedimento",rec:"—",mat:"Macchina / cavi",pct:"",desc:"Lat machine con presa larga, tirare verso il petto contraendo i dorsali. Busto leggermente inclinato indietro.",note:"Eseguire fino a esaurimento (sfinimento). Controllare il rilascio.",link:"https://youtu.be/7JnP8dFbS14"},
+    {id:uid(),nome:"Triceps pushdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:'30"',mat:"Cavi",pct:"50%",desc:"Estensione tricipiti ai cavi alti. Gomiti fissi ai fianchi, spingere verso il basso fino a completa estensione.",note:"Controllare la fase eccentrica.",link:"https://youtu.be/LXkCrxn3caQ"},
+    {id:uid(),nome:"Seated close grip cable row",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Cavi",pct:"50%",desc:"Rematore seduto ai cavi con presa stretta. Tirare verso l'ombelico retraendo le scapole.",note:"Non iperestendere la colonna in trazione.",link:"https://youtu.be/SLOtxuaStoQ"},
+    {id:uid(),nome:"Pull over machine",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:'45"',mat:"Macchina",pct:"50%",desc:"Pullover alla macchina. Partire con le braccia in alto, portarle verso il basso contraendo dorsali e gran dentato.",note:"Ottimo per mobilita della spalla.",link:"https://youtu.be/zpCCC0iCvdI"},
+    {id:uid(),nome:"Cable biceps curls",zona:"Bicipiti",fase:"Fondamentali",serie:4,rip:"8",rec:'60"',mat:"Cavi",pct:"65%",desc:"Curl bicipiti ai cavi bassi. Tensione costante durante tutto il movimento.",note:"Mantenere i gomiti fermi.",link:"https://youtu.be/rfRdD5PKrko"},
+    {id:uid(),nome:"Croci ai cavi bassi",zona:"Petto",fase:"Fondamentali",serie:4,rip:"12",rec:'60"',mat:"Cavi",pct:"50%",desc:"Croci con cavi dal basso verso l'alto. Incrociare le mani al centro all'altezza del petto contraendo i pettorali.",note:"Arco del movimento controllato.",link:"https://www.youtube.com/watch?v=jzKDCuJVLjo"},
+    {id:uid(),nome:"Cable Pull down",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:'60"',mat:"Cavi",pct:"40%",desc:"Pulldown ai cavi. Tirare verso il basso con le braccia estese, attivando i dorsali senza flettere i gomiti.",note:"Movimento ampio e controllato.",link:"https://youtu.be/vvvNma1AVf0"},
+    {id:uid(),nome:"Barbell Rollout",zona:"Addome",fase:"Complementari",serie:4,rip:"8",rec:'60"',mat:"Bilanciere",pct:"BW",desc:"In ginocchio, far scorrere il bilanciere in avanti mantenendo il core contratto. Tornare lentamente.",note:"Non lasciare cedere la zona lombare. Progressione avanzata.",link:"https://youtu.be/3C1TRMJveXo"},
+    {id:uid(),nome:"Adductor machine",zona:"Adduttori/Abduttori",fase:"Post-infortunio",serie:2,rip:"15-20",rec:'45"',mat:"Macchina",pct:"",desc:"Adduzione dell'anca alla macchina verso l'interno. Rinforzo degli adduttori.",note:"Non chiudere troppo velocemente. ROM controllato.",link:"https://www.youtube.com/watch?v=V7YHfRT2PLE"},
+    {id:uid(),nome:"Chest press (macchina)",zona:"Petto",fase:"Fondamentali",serie:4,rip:"12-15",rec:'30-45"',mat:"Macchina",pct:"",desc:"Distensione su macchina chest press. Spingere orizzontalmente controllando sia la spinta che il ritorno.",note:"Ritorno lento (eccentrica 3 sec).",link:"https://youtu.be/n1Dyy3De1Rc"},
+    {id:uid(),nome:"Pectoral Machine",zona:"Petto",fase:"Fondamentali",serie:3,rip:"12-15",rec:'30"',mat:"Macchina",pct:"",desc:"Aperture ai pettorali alla macchina. Chiudere le braccia davanti al petto contraendo i pettorali.",note:"ROM controllato, non aprire eccessivamente in soggetti con instabilita anteriore.",link:"https://www.youtube.com/watch?v=6dExVifvwR8"},
+    {id:uid(),nome:"Pulley Row",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:'60"',mat:"Cavi",pct:"",desc:"Rematore ai cavi seduto con presa neutra. Tirare verso l'ombelico, retrarre le scapole.",note:"Movimento controllato. Buona attivazione romboidei e trapezio medio.",link:"https://www.youtube.com/watch?v=r2cv4X8pJn8"},
+    {id:uid(),nome:"Arm extension (cavi)",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"10",rec:'60"',mat:"Cavi",pct:"",desc:"Estensione tricipiti ai cavi. Gomiti fissi vicino alla testa, estendere le braccia.",note:"Controllare la fase eccentrica.",link:"https://youtu.be/ZgwlfnvmPFk"},
+    {id:uid(),nome:"Arm curl (manubri)",zona:"Bicipiti",fase:"Fondamentali",serie:3,rip:"15",rec:'45"',mat:"Manubri",pct:"",desc:"Curl bicipiti con manubri. Gomiti fermi, supinare il polso nella fase concentrica.",note:"Movimento pulito, non usare l'inerzia.",link:"https://youtu.be/ZgwlfnvmPFk"},
+    {id:uid(),nome:"Cable rope pulldown",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"10",rec:'60"',mat:"Cavi",pct:"",desc:"Pulldown con corda ai cavi. Tirare verso il collo aprendo le mani lateralmente. Attiva il dorsale largo.",note:"Movimento controllato, busto stabile.",link:""},
+    {id:uid(),nome:"ABD Crunch",zona:"Addome",fase:"Post-infortunio",serie:3,rip:"15",rec:'60"',mat:"Macchina / cavi",pct:"",desc:"Crunch alla macchina o ai cavi. Flettere il busto verso le ginocchia contro resistenza.",note:"Controllo nella fase eccentrica. Respirazione corretta.",link:"https://youtu.be/qWtYjH0enBA"},
+    {id:uid(),nome:"Front Squat Smith machine",zona:"Quadricipiti",fase:"Complementari",serie:4,rip:"8",rec:'60"',mat:"Smith machine",pct:"65%",desc:"Front squat allo Smith machine. Bilanciere sulle spalle anteriori, squat profondo mantenendo busto eretto.",note:"Smith machine per sicurezza e controllo traiettoria.",link:"https://youtu.be/DIrbREWqofE"},
+    {id:uid(),nome:"Sissy Squat",zona:"Quadricipiti",fase:"Complementari",serie:3,rip:"12",rec:'60"',mat:"Corpo libero",pct:"BW",desc:"Squat a corpo libero con forte inclinazione posteriore del busto e flessione plantare. Intenso per il quadricipite.",note:"Progressione avanzata, non indicato in fase acuta.",link:"https://www.youtube.com/watch?v=VUiFlZ2FsKA"},
+    {id:uid(),nome:"Walking lunges",zona:"Affondi",fase:"Complementari",serie:4,rip:"10",rec:'30"',mat:"Corpo libero",pct:"50%",desc:"Affondi camminati. Passo ampio in avanti, abbassare il ginocchio posteriore verso terra e continuare alternando.",note:"Busto eretto, coordinazione e equilibrio.",link:"https://youtu.be/DlhojghkaQ0"},
+    {id:uid(),nome:"DB Split squat",zona:"Affondi",fase:"Complementari",serie:4,rip:"6+6",rec:'60"',mat:"Manubri",pct:"50%",desc:"Split squat con manubri, piede posteriore su rialzo. Scendere verticalmente.",note:"Eccellente per forza monopodalica e stabilita.",link:"https://youtu.be/Wcmg-3iHwjQ"},
+    {id:uid(),nome:"Seated Calf Raise",zona:"Polpacci",fase:"Fondamentali",serie:3,rip:"15",rec:'60"',mat:"Macchina",pct:"50%",desc:"Calf raise da seduto, carico sulle cosce. Attiva prevalentemente il soleo rispetto al gemello.",note:"Utile post-lesioni al tendine d'Achille.",link:"https://youtu.be/HSGjUouQZCQ"},
+    {id:uid(),nome:"Quadruped Reach Through",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"10 per lato",rec:"—",mat:"Corpo libero",pct:"",desc:"Quadrupedica: portare un braccio sotto il corpo ruotando il rachide toracico, poi aprire verso il soffitto.",note:"Ottimo per mobilita toracica. Respirare nel movimento.",link:"https://youtu.be/f4EE_a_bVDE"},
+    {id:uid(),nome:"Floor press Manubri",zona:"Petto",fase:"Post-infortunio",serie:4,rip:"12",rec:'45"',mat:"Manubri",pct:"",desc:"Distensione con manubri a terra (floor press). ROM ridotto rispetto alla panca, minore stress sulla spalla.",note:"Esecuzione lenta. Ottimo per chi ha limitazioni alla spalla.",link:"https://youtu.be/nYa_rGWlBpk"},
+    {id:uid(),nome:"Press con elastico",zona:"Petto",fase:"Post-infortunio",serie:3,rip:"15",rec:'60"',mat:"Elastico",pct:"",desc:"Press orizzontale con elastico. Spingere in avanti partendo dal petto, controllare il ritorno.",note:"Focus sulla tecnica. Ideale in fase acuta per caricare senza sovraccaricare.",link:""},
+    {id:uid(),nome:"Tirata laterale elastico",zona:"Spalle",fase:"Post-infortunio",serie:2,rip:"20",rec:'45"',mat:"Elastico",pct:"",desc:"Tirata laterale con elastico per il deltoide medio. Andata lenta e controllata.",note:"Andata lenta. Ottimo esercizio di attivazione pre-allenamento.",link:""},
+    {id:uid(),nome:"Tricep Skullcrusher",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"8",rec:'60"',mat:"Bilanciere / manubri",pct:"",desc:"Disteso su panca, abbassare il bilanciere verso la fronte flettendo i gomiti. Estendere con forza.",note:"Ultima serie a cedimento. Gomiti fermi e orientati verso il soffitto.",link:""},
+    {id:uid(),nome:"Clean singolo con manubrio",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Clean monolaterale con manubrio. Partire dal basso con trazione esplosiva portando il manubrio alla spalla.",note:"Movimento balistico controllato. Buona coordinazione anca-spalla.",link:""},
+    {id:uid(),nome:"Rematore singolo elastico",zona:"Dorsali",fase:"Post-infortunio",serie:4,rip:"8",rec:'30"',mat:"Elastico",pct:"",desc:"Rematore monolaterale con elastico. Tirare il gomito posteriormente contraendo il dorsale.",note:"Stabilizzare il tronco. Movimento lento e controllato.",link:""},
+    {id:uid(),nome:'Row Manubrio (fermo 2")',zona:"Spalla",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Rematore con manubrio con pausa isometrica di 2 secondi nella posizione di massima contrazione.",note:"Fermo 2 secondi in apice. Aumenta il time under tension.",link:""},
+    {id:uid(),nome:"DB Pull overs",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:'45"',mat:"Manubri",pct:"",desc:"Disteso su panca, manubrio con entrambe le mani sopra il petto. Portare il manubrio oltre la testa ad arco e ritornare.",note:"Salita veloce. Ottimo per gran dentato e dorsale.",link:"https://youtu.be/-oXVlHotHP4"},
+    {id:uid(),nome:"DB Rear delt fly",zona:"Spalle",fase:"Fondamentali",serie:3,rip:"8",rec:'30"',mat:"Manubri",pct:"",desc:"Busto inclinato, aprire le braccia lateralmente con gomiti leggermente flessi per attivare il deltoide posteriore.",note:"Movimento controllato. Non usare l'inerzia del busto.",link:"https://youtu.be/3gJXpfwg_go"},
+    {id:uid(),nome:"DB Thruster",zona:"Spalle",fase:"Fondamentali",serie:5,rip:"6",rec:'60"',mat:"Manubri",pct:"",desc:"Squat + shoulder press in sequenza continua con manubri. Salire dallo squat e spingere i manubri sopra la testa.",note:"Esercizio metabolico complesso. Mantenere la schiena neutra in tutto il movimento.",link:"https://youtu.be/u3wKkZjE8QM"},
+    {id:uid(),nome:"Inchworm",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"15",rec:'60"',mat:"Corpo libero",pct:"",desc:"Da in piedi, scendere con le mani a terra e camminare con le mani fino a posizione plank, poi tornare.",note:"Ottimo esercizio di mobilita globale e attivazione core. Ginocchia tese.",link:"https://youtu.be/uwB_lmF3_R0"}
+  ];
+}
+
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+// ===================================================================
+// ---- SUPABASE SYNC LAYER ----
+// ===================================================================
+const SB_URL = 'https://oenqgugzmnnggfapuwsr.supabase.co';
+const SB_KEY = 'sb_publishable_3lgvGco73nlx5uZS1ifHCA_FhTsQSGC';
+const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SB_URL, SB_KEY) : null;
+
+let dirty = false;          // ci sono modifiche locali non ancora sincronizzate
+let syncTimer = null;
+let initialLoadDone = false;
+
+// ---- mapping locale <-> riga Supabase ----
+function esercizioToRow(e) {
+  return {
+    id: e.id, nome: e.nome || '', zona: e.zona || '', fase: e.fase || '',
+    serie: e.serie ?? null, rip: e.rip || '', rec: e.rec || '', mat: e.mat || '',
+    pct: e.pct || '', link: e.link || '', desc_: e.desc || '', note: e.note || ''
+  };
+}
+function rowToEsercizio(r) {
+  return {
+    id: r.id, nome: r.nome, zona: r.zona, fase: r.fase, serie: r.serie,
+    rip: r.rip, rec: r.rec, mat: r.mat, pct: r.pct, link: r.link,
+    desc: r.desc_, note: r.note
+  };
+}
+function schedaToRow(s) {
+  return {
+    id: s.id, nome: s.nome || '', zona: s.zona || '', fase: s.fase || '',
+    note: s.noteGen || '',
+    giorni: { days: s.giorni || [], data: s.data || '', freq: s.freq || '', obiettivi: s.obiettivi || '' },
+    num_giorni: s.numGiorni || 1,
+    html: s.html || '',
+    versioni: s.versioni || [],
+    created_at: s.createdAt || new Date().toISOString(),
+    updated_at: s.updatedAt || s.createdAt || new Date().toISOString()
+  };
+}
+function rowToScheda(r) {
+  const extra = r.giorni || {};
+  return {
+    id: r.id, nome: r.nome, zona: r.zona, fase: r.fase, noteGen: r.note,
+    giorni: Array.isArray(extra) ? extra : (extra.days || []),
+    data: extra.data || '', freq: extra.freq || '', obiettivi: extra.obiettivi || '',
+    numGiorni: r.num_giorni || 1, html: r.html, versioni: r.versioni || [],
+    createdAt: r.created_at, updatedAt: r.updated_at
+  };
+}
+
+// ---- cache offline ----
+function loadCache() {
+  esercizi = JSON.parse(localStorage.getItem('ps_esercizi') || 'null') || [];
+  schede   = JSON.parse(localStorage.getItem('ps_schede')   || 'null') || [];
+  dirty    = localStorage.getItem('ps_dirty') === '1';
+}
+function cacheNow() {
+  localStorage.setItem('ps_esercizi', JSON.stringify(esercizi));
+  localStorage.setItem('ps_schede', JSON.stringify(schede));
+}
+function setDirty(v) { dirty = v; localStorage.setItem('ps_dirty', v ? '1' : '0'); }
+function markDeleted(key, id) {
+  const arr = JSON.parse(localStorage.getItem(key) || '[]');
+  if (!arr.includes(id)) arr.push(id);
+  localStorage.setItem(key, JSON.stringify(arr));
+}
+
+// ---- indicatore di stato ----
+function setConnState(state, label) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  el.className = 'sync-indicator sync-' + state;
+  const labels = {
+    online:  '✅ Sincronizzato',
+    offline: '📴 Offline',
+    syncing: '🔄 Sync…',
+    init:    'Avvio…'
+  };
+  el.querySelector('.sync-label').textContent = label || labels[state] || state;
+}
+
+// salva sempre in locale subito, poi pianifica il sync col server
+function saveAll() {
+  cacheNow();
+  scheduleSync();
+}
+function scheduleSync() {
+  setDirty(true);
+  if (!navigator.onLine) { setConnState('offline'); return; }
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncToSupabase(); }, 1000);
+}
+function manualSync() { if (navigator.onLine) syncToSupabase(); else showToast('📴 Nessuna connessione', 2000); }
+
+async function syncToSupabase() {
+  if (!sb) { setConnState('offline', '⚠️ Supabase non disponibile'); return false; }
+  if (!navigator.onLine) { setConnState('offline'); return false; }
+  setConnState('syncing');
+  try {
+    if (esercizi.length) {
+      const { error } = await sb.from('esercizi').upsert(esercizi.map(esercizioToRow), { onConflict: 'id' });
+      if (error) throw error;
+    }
+    const delE = JSON.parse(localStorage.getItem('ps_del_esercizi') || '[]');
+    if (delE.length) {
+      const { error } = await sb.from('esercizi').delete().in('id', delE);
+      if (error) throw error;
+      localStorage.removeItem('ps_del_esercizi');
+    }
+    if (schede.length) {
+      const { error } = await sb.from('schede').upsert(schede.map(schedaToRow), { onConflict: 'id' });
+      if (error) throw error;
+    }
+    const delS = JSON.parse(localStorage.getItem('ps_del_schede') || '[]');
+    if (delS.length) {
+      const { error } = await sb.from('schede').delete().in('id', delS);
+      if (error) throw error;
+      localStorage.removeItem('ps_del_schede');
+    }
+    setDirty(false);
+    setConnState('online');
+    localStorage.setItem('ps_last_sync', new Date().toISOString());
+    return true;
+  } catch (err) {
+    console.error('Errore sync Supabase:', err);
+    setConnState('offline', '⚠️ Errore sync');
+    return false;
+  }
+}
+
+// ---- caricamento iniziale ----
+async function initData() {
+  loadCache(); // mostra subito quello che c'è in cache offline
+  renderAllPages();
+
+  if (!sb) { setConnState('offline', '⚠️ Supabase non disponibile'); return; }
+
+  if (!navigator.onLine) {
+    if (!esercizi.length) { esercizi = seedEsercizi(); cacheNow(); renderAllPages(); }
+    setConnState('offline');
+    return;
+  }
+
+  setConnState('syncing');
+  try {
+    const [{ data: eRows, error: eErr }, { data: sRows, error: sErr }] = await Promise.all([
+      sb.from('esercizi').select('*'),
+      sb.from('schede').select('*')
+    ]);
+    if (eErr) throw eErr;
+    if (sErr) throw sErr;
+
+    const remoteHasData = (eRows && eRows.length) || (sRows && sRows.length);
+
+    if (remoteHasData) {
+      if (dirty) {
+        // ci sono modifiche locali non ancora inviate: le spingiamo prima di tirare giù i dati freschi
+        await syncToSupabase();
+        const [{ data: eRows2 }, { data: sRows2 }] = await Promise.all([
+          sb.from('esercizi').select('*'),
+          sb.from('schede').select('*')
+        ]);
+        esercizi = (eRows2 || []).map(rowToEsercizio);
+        schede   = (sRows2 || []).map(rowToScheda);
+      } else {
+        esercizi = (eRows || []).map(rowToEsercizio);
+        schede   = (sRows || []).map(rowToScheda);
+      }
+      cacheNow();
+    } else {
+      // Primo avvio assoluto: Supabase è vuoto. Usiamo il seed locale solo come bootstrap
+      // e lo carichiamo subito su Supabase, così i prossimi dispositivi leggeranno da lì.
+      if (!esercizi.length) esercizi = seedEsercizi();
+      cacheNow();
+      await syncToSupabase();
+    }
+    setConnState('online');
+  } catch (err) {
+    console.error('Errore caricamento da Supabase:', err);
+    if (!esercizi.length) { esercizi = seedEsercizi(); cacheNow(); }
+    setConnState('offline', '⚠️ Impossibile contattare il server');
+  }
+
+  initialLoadDone = true;
+  renderAllPages();
+}
+
+function renderAllPages() {
+  renderEsercizi();
+  renderPicker();
+  renderGiornoTabs();
+  renderGiorniContainer();
+  const schedePage = document.getElementById('page-schede');
+  if (schedePage && schedePage.classList.contains('active')) renderSchede();
+  const pazPage = document.getElementById('page-pazienti');
+  if (pazPage && pazPage.classList.contains('active')) renderPazienti();
+}
+
+window.addEventListener('online', () => { setConnState('syncing'); syncToSupabase(); });
+window.addEventListener('offline', () => { setConnState('offline'); });
+
+
+// ---- NAV ----
+function goTo(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  btn.classList.add('active');
+  if(page==='esercizi') renderEsercizi();
+  if(page==='schede') renderSchede();
+  if(page==='genera') { renderPicker(); renderGiornoTabs(); renderGiorniContainer(); }
+  if(page==='pazienti') renderPazienti();
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ---- ESERCIZI ----
+function setFilterMat(mat) {
+  const sel = document.getElementById('filter-mat');
+  if (!sel) return;
+  // Trova l'option che contiene il testo
+  for (const opt of sel.options) {
+    if (mat && opt.value && mat.toLowerCase().includes(opt.value.toLowerCase())) {
+      sel.value = opt.value; break;
+    }
+  }
+  renderEsercizi();
+}
+
+function resetFiltri() {
+  document.getElementById('search-esercizi').value = '';
+  document.getElementById('filter-zona').value = '';
+  document.getElementById('filter-fase').value = '';
+  document.getElementById('filter-mat').value = '';
+  renderEsercizi();
+}
+
+function renderEsercizi() {
+  const q    = (document.getElementById('search-esercizi').value||'').toLowerCase();
+  const zona = document.getElementById('filter-zona').value;
+  const fase = document.getElementById('filter-fase').value;
+  const mat  = document.getElementById('filter-mat')?.value || '';
+  let f = esercizi.filter(e => {
+    const m = !q || e.nome.toLowerCase().includes(q)||(e.zona||'').toLowerCase().includes(q)||(e.desc||'').toLowerCase().includes(q);
+    const matOk = !mat || (e.mat||'').toLowerCase().includes(mat.toLowerCase());
+    return m && (!zona||e.zona===zona) && (!fase||e.fase===fase) && matOk;
+  });
+  document.getElementById('count-esercizi').textContent = esercizi.length + ' esercizi nel database';
+  const el = document.getElementById('list-esercizi');
+  if(!f.length) { el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Nessun esercizio trovato</p></div>'; return; }
+  el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Materiale</th><th>Zona</th><th>Serie × Rip.</th><th>Rec.</th><th>Intensità</th><th>%</th><th>Video</th><th style="width:80px"></th></tr></thead><tbody>'+
+    f.map(e=>`<tr>
+      <td><strong>${e.nome}</strong>${e.desc?'<br><span style="font-size:11px;color:#5a6b68">'+e.desc.slice(0,70)+(e.desc.length>70?'…':'')+'</span>':''}</td>
+      <td style="font-size:12px;cursor:pointer" onclick="setFilterMat('${e.mat||''}'" title="Filtra per questa attrezzatura">${e.mat||'—'}</td>
+      <td><span class="badge badge-pine">${e.zona||'—'}</span></td>
+      <td style="white-space:nowrap;font-weight:600">${e.serie||'—'} × ${e.rip||'—'}</td>
+      <td style="white-space:nowrap">${e.rec||'—'}</td>
+      <td>${e.fase?'<span class="badge badge-gray">'+e.fase+'</span>':'—'}</td>
+      <td>${e.pct?'<span class="badge badge-honey">'+e.pct+'</span>':'—'}</td>
+      <td>${e.link?'<a href="'+e.link+'" target="_blank" class="link-badge">▶ Video</a>':'—'}</td>
+      <td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="editEsercizio('${e.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delEsercizio('${e.id}')">🗑</button></div></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+document.getElementById('btn-nuovo-eserc').onclick = () => {
+  document.getElementById('eserc-edit-id').value='';
+  document.getElementById('modal-eserc-title').textContent='Nuovo esercizio';
+  ['nome','desc','note','rip','rec','link','pct'].forEach(f=>document.getElementById('e-'+f).value='');
+  document.getElementById('e-serie').value=3;
+  document.getElementById('e-zona').value='';
+  document.getElementById('e-fase').value='';
+  document.getElementById('e-mat').value='Corpo libero';
+  openModal('modal-esercizio');
+};
+
+function editEsercizio(id) {
+  const e = esercizi.find(x=>x.id===id); if(!e) return;
+  document.getElementById('eserc-edit-id').value=id;
+  document.getElementById('modal-eserc-title').textContent='Modifica esercizio';
+  document.getElementById('e-nome').value=e.nome||'';
+  document.getElementById('e-zona').value=e.zona||'';
+  document.getElementById('e-fase').value=e.fase||'';
+  document.getElementById('e-serie').value=e.serie||3;
+  document.getElementById('e-rip').value=e.rip||'';
+  document.getElementById('e-rec').value=e.rec||'';
+  document.getElementById('e-mat').value=e.mat||'Corpo libero';
+  document.getElementById('e-pct').value=e.pct||'';
+  document.getElementById('e-link').value=e.link||'';
+  document.getElementById('e-desc').value=e.desc||'';
+  document.getElementById('e-note').value=e.note||'';
+  openModal('modal-esercizio');
+}
+
+function salvaEsercizio() {
+  const nome = document.getElementById('e-nome').value.trim();
+  if(!nome) { alert('Inserisci il nome dell\'esercizio'); return; }
+  const id = document.getElementById('eserc-edit-id').value;
+  const obj = {
+    id: id||uid(), nome,
+    zona:document.getElementById('e-zona').value,
+    fase:document.getElementById('e-fase').value,
+    serie:parseInt(document.getElementById('e-serie').value)||3,
+    rip:document.getElementById('e-rip').value.trim(),
+    rec:document.getElementById('e-rec').value.trim(),
+    mat:document.getElementById('e-mat').value,
+    pct:document.getElementById('e-pct').value.trim(),
+    link:document.getElementById('e-link').value.trim(),
+    desc:document.getElementById('e-desc').value.trim(),
+    note:document.getElementById('e-note').value.trim(),
+  };
+  if(id) { const i=esercizi.findIndex(x=>x.id===id); esercizi[i]=obj; }
+  else esercizi.push(obj);
+  saveAll(); closeModal('modal-esercizio'); renderEsercizi();
+}
+
+function delEsercizio(id) {
+  if(!confirm('Eliminare questo esercizio?')) return;
+  markDeleted('ps_del_esercizi', id);
+  esercizi=esercizi.filter(x=>x.id!==id); saveAll(); renderEsercizi();
+}
+
+// ---- STATO MULTI-GIORNO ----
+let numGiorni = 1;
+let giornoAttivo = 0;
+let giorni = [
+  { nome: '', esercizi: [] }
+];
+
+function setGiorni(n, btn) {
+  document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active','btn-primary'));
+  document.querySelectorAll('.day-btn').forEach(b => b.classList.add('btn-secondary'));
+  btn.classList.add('active','btn-primary');
+  btn.classList.remove('btn-secondary');
+  numGiorni = n;
+  // Adatta l'array giorni
+  while (giorni.length < n) giorni.push({ nome: '', esercizi: [] });
+  if (giorni.length > n) giorni = giorni.slice(0, n);
+  if (giornoAttivo >= n) giornoAttivo = n - 1;
+  renderGiornoTabs();
+  renderGiorniContainer();
+}
+
+function switchGiorno(idx, btn) {
+  giornoAttivo = idx;
+  document.querySelectorAll('.giorno-tab').forEach(b => {
+    b.classList.remove('btn-primary');
+    b.classList.add('btn-secondary');
+  });
+  btn.classList.add('btn-primary');
+  btn.classList.remove('btn-secondary');
+  document.getElementById('g-giorno-nome').value = giorni[idx].nome || '';
+  renderGiorniContainer();
+}
+
+function aggiornaGiornoNome() {
+  giorni[giornoAttivo].nome = document.getElementById('g-giorno-nome').value;
+  renderGiornoTabs();
+  renderGiorniContainer();
+}
+
+function renderGiornoTabs() {
+  const tabs = document.getElementById('giorno-tabs');
+  tabs.innerHTML = '';
+  for (let i = 0; i < numGiorni; i++) {
+    const label = giorni[i].nome ? `G${i+1} · ${giorni[i].nome}` : `Giorno ${i+1}`;
+    const active = i === giornoAttivo;
+    tabs.innerHTML += `<button class="btn giorno-tab ${active?'btn-primary':'btn-secondary'}"
+      data-g="${i}" onclick="switchGiorno(${i},this)">${label}</button>`;
+  }
+  document.getElementById('g-giorno-nome').value = giorni[giornoAttivo].nome || '';
+}
+
+function renderGiorniContainer() {
+  const cont = document.getElementById('giorni-container');
+  let out = '';
+  for (let g = 0; g < numGiorni; g++) {
+    const giorno = giorni[g];
+    const label = giorno.nome ? `Giorno ${g+1} — ${giorno.nome}` : `Giorno ${g+1}`;
+    const isActive = g === giornoAttivo;
+    const count = giorno.esercizi.length;
+    out += `<div class="card" style="margin-bottom:12px;${isActive?'border-color:var(--honey);box-shadow:0 0 0 2px rgba(222,158,54,.25)':''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="card-title" style="${isActive?'color:var(--pine)':''}">${isActive?'✏️ ':''}${label}</div>
+        <span class="badge badge-pine">${count} esercizi</span>
+      </div>`;
+    if (!count) {
+      out += `<div style="text-align:center;padding:16px;color:#aaa;font-size:13px">Nessun esercizio — seleziona questo giorno e aggiungi</div>`;
+    } else {
+      giorno.esercizi.forEach((e, i) => {
+        out += `<div class="exercise-slot" style="${isActive?'':'opacity:.75'}">
+          <span class="grip">⠿</span>
+          <div class="slot-name">${e.nome}</div>
+          <div class="slot-params">
+            <div class="slot-param"><label>Serie</label>
+              <input type="number" min="1" max="20" value="${e._serie||3}"
+                ${isActive?`onchange="upSlot(${g},${i},'_serie',this.value)"`:'readonly'}></div>
+            <div class="slot-param"><label>Rip./Tempo</label>
+              <input type="text" value="${e._rip||''}" style="width:76px"
+                ${isActive?`onchange="upSlot(${g},${i},'_rip',this.value)"`:'readonly'}></div>
+            <div class="slot-param slot-note"><label>Nota spec.</label>
+              <input type="text" value="${e._note||''}" placeholder="opzionale"
+                ${isActive?`onchange="upSlot(${g},${i},'_note',this.value)"`:'readonly'}></div>
+          </div>
+          ${isActive?`<button class="btn btn-danger btn-sm" onclick="rmSlot(${g},${i})">✕</button>`:''}
+        </div>`;
+      });
+    }
+    out += `</div>`;
+  }
+  cont.innerHTML = out;
+}
+
+// ---- PICKER ----
+// Mappa distretto → zone anatomiche
+const DISTRETTI = {
+  superiore: ['Petto','Spalle','Dorsali','Bicipiti','Tricipiti'],
+  inferiore: ['Quadricipiti','Femorali','Glutei','Affondi','Adduttori/Abduttori','Polpacci'],
+  core:      ['Addome','Mobilità'],
+  cardio:    ['Cardio','Warm-up'],
+};
+
+function renderPicker() {
+  const distretto = document.getElementById('g-distretto')?.value || '';
+  const fase      = document.getElementById('g-fase')?.value || '';
+  const mat       = document.getElementById('g-mat')?.value || '';
+  let opts = esercizi;
+  if (distretto) opts = opts.filter(e => DISTRETTI[distretto]?.includes(e.zona));
+  if (fase)      opts = opts.filter(e => !e.fase || e.fase === fase);
+  if (mat)       opts = opts.filter(e => (e.mat||'').toLowerCase().includes(mat.toLowerCase()));
+  document.getElementById('g-picker').innerHTML =
+    '<option value="">— scegli esercizio dal database —</option>' +
+    opts.map(e => `<option value="${e.id}">${e.nome} [${e.zona||''}]</option>`).join('');
+}
+
+function addEsercizioToScheda() {
+  const id = document.getElementById('g-picker').value;
+  if (!id) return;
+  const e = esercizi.find(x => x.id === id);
+  if (!e) return;
+  giorni[giornoAttivo].esercizi.push({ ...e, _serie: e.serie, _rip: e.rip, _note: '' });
+  renderGiorniContainer();
+}
+
+function upSlot(g, i, key, val) { giorni[g].esercizi[i][key] = val; }
+
+function rmSlot(g, i) {
+  giorni[g].esercizi.splice(i, 1);
+  renderGiorniContainer();
+}
+
+function resetScheda() {
+  if (!confirm('Resettare tutta la scheda?')) return;
+  giorni = Array.from({length: numGiorni}, () => ({ nome: '', esercizi: [] }));
+  document.getElementById('g-nome').value = '';
+  document.getElementById('g-note-generali').value = '';
+  document.getElementById('g-obiettivi').value = '';
+  document.getElementById('g-giorno-nome').value = '';
+  renderGiornoTabs();
+  renderGiorniContainer();
+}
+
+// ---- BUILD HTML SCHEDA ----
+function buildSchedaHTML(inline) {
+  const nome         = document.getElementById('g-nome').value.trim() || 'Paziente';
+  const data         = document.getElementById('g-data').value;
+  const zona         = document.getElementById('g-zona').value;
+  const fase         = document.getElementById('g-fase').value;
+  const noteGen      = document.getElementById('g-note-generali').value.trim();
+  const obiettivi    = document.getElementById('g-obiettivi').value.trim();
+  const dataStr      = data ? new Date(data).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT');
+  const freqLabel    = numGiorni === 1 ? '1 giorno / settimana' : numGiorni === 2 ? '2 giorni / settimana' : '3 giorni / settimana';
+  const logoTag      = inline ? '<img src="' + LOGO + '" style="height:36px;opacity:.9" alt="Physio Shoulder">' : '';
+
+  let out = '<div class="scheda-preview">'
+    + '<div class="scheda-header">'
+    + '<div class="scheda-header-inner">'
+    + '<div>'
+    + '<h2>Scheda di allenamento domiciliare</h2>'
+    + '<div class="meta"><strong>Paziente:</strong> ' + nome + ' &nbsp;|&nbsp; <strong>Data:</strong> ' + dataStr + ' &nbsp;|&nbsp; <strong>Frequenza:</strong> ' + freqLabel + '</div>'
+    + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Intensità:</strong> ' + fase : '') + '</div>' : '')
+    + '</div>'
+    + logoTag
+    + '</div>'
+    + '</div>';
+
+  // NOTE GENERALI
+  if (noteGen) {
+    out += `<div class="note-generali-block">
+      <div class="label">📋 Note per il paziente</div>
+      <div class="testo">${noteGen}</div>
+    </div>`;
+  }
+
+  // GIORNI
+  const giorniConEserc = giorni.filter(g => g.esercizi.length > 0);
+  if (!giorniConEserc.length) {
+    out += '<div class="empty"><p>Nessun esercizio aggiunto</p></div>';
+  } else {
+    giorni.forEach((giorno, gi) => {
+      if (!giorno.esercizi.length) return;
+      const giornoLabel = giorno.nome
+        ? `Giorno ${gi+1} — ${giorno.nome}`
+        : numGiorni > 1 ? `Giorno ${gi+1}` : 'Programma di esercizi';
+      out += `<div class="scheda-section-label">${giornoLabel}</div>`;
+      giorno.esercizi.forEach((e, i) => {
+        out += `<div class="esercizio-row">
+          <div>
+            <div class="esercizio-nome"><span class="esercizio-num">${i+1}</span>${e.nome}</div>
+            ${e.desc ? '<div class="esercizio-desc">'+e.desc+'</div>' : ''}
+            ${e.link ? '<div style="margin-top:6px;padding-left:32px"><a href="'+e.link+'" target="_blank" class="link-badge">▶ Video esplicativo</a></div>' : ''}
+          </div>
+          <div class="esercizio-params">
+            <div class="param-box"><div class="param-label">Serie</div><div class="param-val">${e._serie||e.serie||'—'}</div></div>
+            <div class="param-box"><div class="param-label">Rip./Tempo</div><div class="param-val" style="font-size:11px">${e._rip||e.rip||'—'}</div></div>
+            <div class="param-box"><div class="param-label">Recupero</div><div class="param-val" style="font-size:11px">${e.rec||'—'}</div></div>
+            ${e.pct ? '<div class="param-box"><div class="param-label">Intensità</div><div class="param-val" style="font-size:11px;color:#92600a">'+e.pct+'</div></div>' : ''}
+          </div>
+        </div>`;
+        const nota = (e._note || '') || e.note || '';
+        if (nota) out += `<div class="note-row">⚠️ ${nota}</div>`;
+      });
+    });
+  }
+
+  out += `<div class="scheda-footer">
+    <span>In caso di dolore, interrompere l'esercizio e contattare il fisioterapista.</span>
+    <span style="font-weight:600;color:var(--honey)">Physio Shoulder</span>
+  </div></div>`;
+
+  return { schedaHtml: out, meta: { nome, data: dataStr, zona, fase, freq: freqLabel, obiettivi, noteGen } };
+}
+
+function anteprimaScheda() {
+  const ris = buildSchedaHTML(true);
+  document.getElementById('preview-content').innerHTML = ris.schedaHtml;
+  openModal('modal-preview');
+}
+
+
+
+
+const PRINT_CSS = `
+  @page { margin: 1.5cm; size: A4; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  .link-badge { display:inline-flex; align-items:center; gap:4px; background:#fef6e4; border:1px solid #de9e36; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; color:#92600a; text-decoration:none; }
+  a::after, a[href]::after { content: none !important; display: none !important; }
+  body { font-family:system-ui,-apple-system,sans-serif; max-width:820px; margin:32px auto; color:#1a2422; background:#fff; }
+  .scheda-preview { border-radius:9px; overflow:hidden; border:1px solid #d2dfdd; }
+  .scheda-header { padding:18px 24px 16px; background:#004640; border-bottom:4px solid #de9e36; }
+  .scheda-header-inner { display:flex; align-items:flex-start; justify-content:space-between; }
+  .scheda-header h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .meta { font-size:12px; color:#d2dfdd; line-height:1.6; }
+  .scheda-section-label { background:#de9e36; padding:6px 24px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#fff; }
+  .esercizio-row { padding:13px 24px; border-bottom:1px solid #eef0ef; display:grid; grid-template-columns:2fr auto; gap:16px; align-items:start; }
+  .esercizio-num { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:#004640; color:#fff; border-radius:50%; font-size:11px; font-weight:700; margin-right:10px; flex-shrink:0; }
+  .esercizio-nome { font-weight:700; font-size:14px; color:#004640; display:flex; align-items:center; }
+  .esercizio-desc { font-size:12px; color:#5a6b68; margin-top:4px; line-height:1.5; padding-left:32px; }
+  .esercizio-params { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start; }
+  .param-box { background:#fef6e4; border:1px solid rgba(222,158,54,.4); border-radius:6px; padding:5px 11px; text-align:center; min-width:55px; }
+  .param-label { font-size:9px; text-transform:uppercase; color:#5a6b68; letter-spacing:.05em; font-weight:600; }
+  .param-val { font-size:14px; font-weight:700; color:#de9e36; margin-top:1px; }
+  .note-row { background:#fef6e4; border-left:4px solid #de9e36; margin:0 24px 10px; padding:7px 12px; font-size:12px; color:#7c5109; border-radius:0 5px 5px 0; }
+  .link-badge { display:inline-flex; align-items:center; gap:4px; background:#e8f0ef; border:1px solid #d2dfdd; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; color:#004640; text-decoration:none; margin-top:4px; margin-left:32px; }
+  .scheda-footer { padding:14px 24px; font-size:11px; color:#5a6b68; background:#f7f8f8; border-top:1px solid #d2dfdd; display:flex; align-items:center; justify-content:space-between; }
+  .note-generali-block { padding:12px 24px; background:#fffbeb; border-bottom:1px solid #f5c96a; }
+  .note-generali-block .label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#92600a; margin-bottom:4px; }
+  .note-generali-block .testo { font-size:13px; color:#78350f; line-height:1.6; }
+`;
+
+
+// ---- STAMPA MOBILE-SAFE ----
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg, duration=2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => {
+    t.style.opacity = '0';
+    setTimeout(() => { t.style.display = 'none'; }, 300);
+  }, duration);
+}
+
+// ── STAMPA / PDF ────────────────────────────────────────
+function printContent(contenuto, titolo) {
+  // Concatenazione stringa invece di template literal (Safari iOS safe)
+  const fullHTML = '<!DOCTYPE html><html><head>'
+    + '<meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>' + (titolo || 'Scheda Physio Shoulder') + '</title>'
+    + '<style>' + PRINT_CSS
+    + '@media screen { body { padding:16px; background:#fff; } }'
+    + '</style></head><body>' + contenuto + '</body></html>';
+
+  const blob = new Blob([fullHTML], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href   = url;
+  a.target = '_blank';
+  a.rel    = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setTimeout(() => showToast(
+      isIOS ? '📄 Tocca Condividi → Stampa per PDF' : '📄 Menu ⋮ → Stampa per PDF',
+      4000
+    ), 800);
+  }
+}
+
+
+// ── STAMPA / PDF ────────────────────────────────────────
+function stampaScheda() {
+  const ris = buildSchedaHTML(true);
+  if (!ris || !ris.schedaHtml) {
+    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
+    return;
+  }
+  printContent(ris.schedaHtml, 'Scheda Physio Shoulder');
+}
+
+// ── CONDIVIDI (Web Share API + fallback download) ───────
+async function condividiScheda(id) {
+  const dati = getSchedaData(id);
+  if (!dati) return;
+
+  const titolo   = 'Scheda ' + dati.nome + ' — Physio Shoulder';
+  const fileHTML = buildHTMLFile(dati.html, titolo);
+  const nomeFile = 'scheda_' + dati.nome.replace(/\s+/g, '_') + '.html';
+  const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  // Su iOS: apri in nuova tab, l'utente usa il foglio Share di Safari
+  // È il metodo più affidabile — WhatsApp su iOS accetta file da Safari Share
+  if (isIOS) {
+    const blob = new Blob([fileHTML], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.target   = '_blank';
+    a.rel      = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    setTimeout(() => showToast('📤 Tocca il tasto Condividi (□↑) di Safari', 4500), 600);
+    return;
+  }
+
+  // Su Android: Web Share API con file
+  if (isAndroid && navigator.share) {
+    try {
+      const blob = new Blob([fileHTML], { type: 'text/html' });
+      const file = new File([blob], nomeFile, { type: 'text/html' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: titolo, files: [file] });
+        return;
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+    }
+    // Fallback Android: download
+    const blob2 = new Blob([fileHTML], { type: 'text/html' });
+    const url2  = URL.createObjectURL(blob2);
+    const a2    = Object.assign(document.createElement('a'), { href: url2, download: nomeFile });
+    document.body.appendChild(a2);
+    a2.click();
+    document.body.removeChild(a2);
+    setTimeout(() => URL.revokeObjectURL(url2), 30000);
+    showToast('📥 File in Download — aprilo e condividi', 3500);
+    return;
+  }
+
+  // Desktop: download diretto
+  const blob = new Blob([fileHTML], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: nomeFile });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  showToast('📥 File scaricato', 2500);
+}
+
+// ── SALVA SCHEDA ────────────────────────────────────────
+function salvaScheda() {
+  if (!document.getElementById('g-nome').value.trim()) {
+    showToast('⚠️ Inserisci il nome del paziente', 3000); return;
+  }
+  if (!giorni.some(g => g.esercizi.length)) {
+    showToast('⚠️ Aggiungi almeno un esercizio', 3000); return;
+  }
+  const risS = buildSchedaHTML(true);
+  const snapshot = giorni.map(g => ({ nome: g.nome, esercizi: [...g.esercizi] }));
+  schede.push({
+    id: uid(), ...risS.meta, giorni: snapshot, numGiorni, html: risS.schedaHtml,
+    createdAt: new Date().toISOString()
+  });
+  saveAll();
+  showToast('✅ Scheda salvata correttamente!');
+}
+
+// ---- SCHEDE ARCHIVIO ----
+// ---- SCHEDE ARCHIVIO ----
+function renderSchede() {
+  document.getElementById('count-schede').textContent = schede.length + ' schede salvate';
+  const el = document.getElementById('list-schede');
+  if (!schede.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🗂</div><p>Nessuna scheda salvata</p></div>';
+    return;
+  }
+  el.innerHTML = schede.slice().reverse().map(s => {
+    // Conta esercizi totali (nuovo formato giorni[] o vecchio esercizi[])
+    const totEserc = s.giorni
+      ? s.giorni.reduce((acc, g) => acc + g.esercizi.length, 0)
+      : (s.esercizi ? s.esercizi.length : 0);
+    const giorniInfo = s.numGiorni > 1
+      ? s.giorni.map((g, i) => {
+          const lbl = g.nome ? `G${i+1}·${g.nome}` : `G${i+1}`;
+          return `<span class="badge badge-gray" style="font-size:10px">${lbl}: ${g.esercizi.length} es.</span>`;
+        }).join(' ')
+      : '';
+    return `<div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">👤 ${s.nome}</div>
+          <div class="card-sub">
+            ${s.updatedAt
+              ? '🔄 Aggiornata il '+new Date(s.updatedAt).toLocaleDateString('it-IT')+' · '
+              : '📅 '+s.data+' · '}
+            ${s.zona||'area non specificata'} · ${totEserc} esercizi totali
+            ${s.versioni && s.versioni.length
+              ? '<span class="badge badge-honey" style="margin-left:6px">'+s.versioni.length+' versione'+(s.versioni.length>1?'i':'')+'</span>'
+              : ''}
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">👁 Vedi</button>
+          <button class="btn btn-primary btn-sm" onclick="apriModifica('${s.id}')">✏️ Modifica</button>
+          <button class="btn btn-secondary btn-sm" onclick="printSaved('${s.id}')">🖨</button>
+          <button class="btn btn-sm" onclick="condividiScheda('${s.id}')" style="background:#25D366;color:#fff;border-color:#25D366;border:1.5px solid">📱</button>
+
+          <button class="btn btn-danger btn-sm" onclick="delScheda('${s.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+        ${s.fase ? '<span class="badge badge-gray">'+s.fase+'</span>' : ''}
+        ${s.freq ? '<span class="badge badge-pine">'+s.freq+'</span>' : ''}
+        ${giorniInfo}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewScheda(id) {
+  const s=schede.find(x=>x.id===id); if(!s) return;
+  document.getElementById('preview-content').innerHTML=s.html;
+  openModal('modal-preview');
+}
+
+function printSaved(id) {
+  const s = schede.find(x => x.id === id);
+  if (!s) return;
+  printContent(s.html, 'Scheda ' + s.nome);
+}
+
+function delScheda(id) {
+  if(!confirm('Eliminare questa scheda?')) return;
+  markDeleted('ps_del_schede', id);
+  schede=schede.filter(x=>x.id!==id); saveAll(); renderSchede();
+}
+
+// ---- PAZIENTI ----
+function renderPazienti() {
+  const el = document.getElementById('list-pazienti');
+  const map = {};
+  schede.forEach(s => { if (!map[s.nome]) map[s.nome] = []; map[s.nome].push(s); });
+  const nomi = Object.keys(map);
+  if (!nomi.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>Nessun paziente registrato</p></div>';
+    return;
+  }
+  el.innerHTML = nomi.map(n => {
+    const ss = map[n];
+    return `<div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${n}</div>
+          <div class="card-sub">${ss.length} scheda${ss.length>1?'e':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        ${ss.map(s => {
+          const totE = s.giorni
+            ? s.giorni.reduce((a,g)=>a+g.esercizi.length,0)
+            : (s.esercizi?s.esercizi.length:0);
+          const gg = s.numGiorni > 1 ? ` · ${s.numGiorni}gg` : '';
+          return `<button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">${s.data} — ${s.zona||'—'} (${totE} es.${gg})</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+
+// ---- CONDIVISIONE ----
+
+function getSchedaData(id) {
+  // Se id è null = scheda in costruzione, altrimenti scheda salvata
+  if (id) {
+    const s = schede.find(x => x.id === id);
+    return s ? { html: s.html, nome: s.nome, zona: s.zona || '', data: s.data } : null;
+  }
+  // Scheda in costruzione
+  if (!giorni.some(g => g.esercizi.length)) {
+    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
+    return null;
+  }
+  const nome = document.getElementById('g-nome').value.trim() || 'Paziente';
+  const zona = document.getElementById('g-zona').value.trim() || '';
+  const data = document.getElementById('g-data').value
+    ? new Date(document.getElementById('g-data').value).toLocaleDateString('it-IT')
+    : new Date().toLocaleDateString('it-IT');
+  const risGSD = buildSchedaHTML(true);
+  return { html: risGSD.schedaHtml, nome, zona, data };
+}
+
+function buildHTMLFile(htmlContent, titolo) {
+  // Concatenazione stringa invece di template literal (Safari iOS safe)
+  return '<!DOCTYPE html><html lang="it"><head>'
+    + '<meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1.0">'
+    + '<title>' + (titolo || 'Scheda Physio Shoulder') + '</title>'
+    + '<style>'
+    + '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'body { font-family:system-ui,-apple-system,sans-serif; background:#d2dfdd; padding:16px; }'
+    + PRINT_CSS
+    + 'body { background:#d2dfdd !important; }'
+    + '.scheda-preview { max-width:700px; margin:0 auto; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.15); }'
+    + '.link-badge { display:inline-flex !important; }'
+    + '.esercizio-row { grid-template-columns:2fr auto; gap:12px; }'
+    + '@media (max-width:600px) {'
+    + '  body { padding:8px; }'
+    + '  .esercizio-row { grid-template-columns:1fr; }'
+    + '  .esercizio-params { justify-content:flex-start; margin-top:8px; }'
+    + '}'
+    + '</style></head><body>'
+    + htmlContent
+    + '</body></html>';
+}
+
+
+async function condividiScheda(id) {
+  const dati = getSchedaData(id);
+  if (!dati) return;
+
+  const titolo = `Scheda ${dati.nome} — Physio Shoulder`;
+  const fileHTML = buildHTMLFile(dati.html, titolo);
+
+  // Web Share API (iOS Safari 15+, Android Chrome 89+)
+  if (navigator.share && navigator.canShare) {
+    try {
+      const blob = new Blob([fileHTML], { type: 'text/html' });
+      const file = new File([blob], `scheda_${dati.nome.replace(/\s+/g,'_')}.html`, { type: 'text/html' });
+
+      // Prova prima con file allegato
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: titolo,
+          text: `Scheda di allenamento di ${dati.nome} — Physio Shoulder`,
+          files: [file],
+        });
+        return;
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return; // utente ha annullato
+    }
+  }
+
+  // Fallback: scarica il file HTML
+  try {
+    const blob = new Blob([fileHTML], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `scheda_${dati.nome.replace(/\s+/g,'_')}_${dati.data.replace(/\//g,'-')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+    // Guida per mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      setTimeout(() => showToast('📥 File scaricato — allegalo su WhatsApp!', 3500), 600);
+    }
+  } catch(e) {
+    showToast('⚠️ Errore generazione file', 3000);
+  }
+}
+
+
+// ---- MODIFICA SCHEDA ----
+function renderModPicker() {
+  const dist = document.getElementById('mod-distretto')?.value || '';
+  const mat  = document.getElementById('mod-mat')?.value || '';
+  let opts = esercizi;
+  if (dist) opts = opts.filter(e => DISTRETTI[dist]?.includes(e.zona));
+  if (mat)  opts = opts.filter(e => (e.mat||'').toLowerCase().includes(mat.toLowerCase()));
+  document.getElementById('mod-picker').innerHTML =
+    '<option value="">— scegli esercizio —</option>' +
+    opts.map(e => '<option value="' + e.id + '">' + e.nome + ' [' + (e.zona||'') + ']</option>').join('');
+}
+
+let schedaInModifica = null;   // id della scheda master
+let modGiornoAttivo = 0;
+let modGiorni = [];            // copia di lavoro dei giorni
+
+function apriModifica(id) {
+  const s = schede.find(x => x.id === id);
+  if (!s) return;
+  schedaInModifica = id;
+
+  // Titolo e sottotitolo
+  document.getElementById('modal-mod-title').textContent = `Modifica scheda — ${s.nome}`;
+  document.getElementById('modal-mod-sub').textContent =
+    `Creata il ${s.data} · Versione ${s.versioni ? s.versioni.length + 1 : 1}`;
+
+  // Popola campi
+  document.getElementById('mod-nome').value = s.nome || '';
+  document.getElementById('mod-data').valueAsDate = new Date();
+  document.getElementById('mod-zona').value = s.zona || '';
+  document.getElementById('mod-fase').value = s.fase || '';
+  document.getElementById('mod-note-generali').value = s.noteGen || '';
+
+  // Copia giorni in stato di lavoro
+  if (s.giorni) {
+    modGiorni = s.giorni.map(g => ({
+      nome: g.nome,
+      esercizi: g.esercizi.map(e => ({ ...e }))
+    }));
+  } else {
+    // Compatibilità vecchio formato (esercizi[] flat)
+    modGiorni = [{ nome: '', esercizi: (s.esercizi || []).map(e => ({ ...e })) }];
+  }
+  modGiornoAttivo = 0;
+
+  // Storico versioni
+  renderStorico(s);
+
+  // Popola picker modifica
+  if (document.getElementById('mod-distretto'))
+    document.getElementById('mod-distretto').value = '';
+  renderModPicker();
+
+  renderModGiornoTabs();
+  renderModGiornoEditor();
+  openModal('modal-modifica');
+}
+
+function renderStorico(s) {
+  const wrap = document.getElementById('mod-storico-wrap');
+  const el   = document.getElementById('mod-storico');
+  if (!s.versioni || !s.versioni.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <!-- Versione originale -->
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--gray50);border:1px solid var(--alaba);border-radius:7px">
+        <span style="font-size:18px">🏷</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">Versione originale</div>
+          <div style="font-size:11px;color:var(--gray600)">${s.data} · ${
+            s.giorni ? s.giorni.reduce((a,g)=>a+g.esercizi.length,0) : (s.esercizi||[]).length
+          } esercizi</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="viewSchedaVersione('${s.id}','orig')">👁 Vedi</button>
+      </div>
+      ${s.versioni.map((v, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--pine-xl);border:1px solid var(--alaba);border-radius:7px">
+          <span style="font-size:18px">📝</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Versione ${i+2}</div>
+            <div style="font-size:11px;color:var(--gray600)">${v.data} · ${
+              v.giorni ? v.giorni.reduce((a,g)=>a+g.esercizi.length,0) : 0
+            } esercizi${v.nota ? ' · ' + v.nota : ''}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="viewSchedaVersione('${s.id}',${i})">👁 Vedi</button>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+function viewSchedaVersione(id, verIdx) {
+  const s = schede.find(x => x.id === id);
+  if (!s) return;
+  let htmlContent;
+  if (verIdx === 'orig') {
+    htmlContent = s.html;
+  } else {
+    htmlContent = s.versioni[verIdx]?.html || '';
+  }
+  document.getElementById('preview-content').innerHTML = htmlContent;
+  closeModal('modal-modifica');
+  openModal('modal-preview');
+}
+
+function renderModGiornoTabs() {
+  const tabs = document.getElementById('mod-giorno-tabs');
+  tabs.innerHTML = modGiorni.map((g, i) => {
+    const lbl = g.nome ? `G${i+1}·${g.nome}` : `Giorno ${i+1}`;
+    const active = i === modGiornoAttivo;
+    return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}"
+      onclick="modSwitchGiorno(${i})">${lbl}</button>`;
+  }).join('');
+}
+
+function modSwitchGiorno(idx) {
+  modGiornoAttivo = idx;
+  renderModGiornoTabs();
+  renderModGiornoEditor();
+}
+
+function renderModGiornoEditor() {
+  const el = document.getElementById('mod-giorno-editor');
+  const giorno = modGiorni[modGiornoAttivo];
+  if (!giorno.esercizi.length) {
+    el.innerHTML = '<div style="text-align:center;padding:14px;color:#aaa;font-size:13px">Nessun esercizio in questo giorno</div>';
+    return;
+  }
+  el.innerHTML = giorno.esercizi.map((e, i) => `
+    <div class="exercise-slot" style="margin-bottom:6px">
+      <span class="grip">⠿</span>
+      <div class="slot-name" style="flex:1;font-size:13px;font-weight:600;color:var(--pine)">${e.nome}</div>
+      <div class="slot-params" style="display:flex;gap:8px;align-items:center">
+        <div class="slot-param">
+          <label style="font-size:9px;color:var(--gray600)">Serie</label>
+          <input type="number" min="1" max="20" value="${e._serie||e.serie||3}"
+            onchange="modUpSlot(${i},'_serie',this.value)"
+            style="width:52px;text-align:center;padding:4px 6px;font-size:13px">
+        </div>
+        <div class="slot-param">
+          <label style="font-size:9px;color:var(--gray600)">Rip./Tempo</label>
+          <input type="text" value="${e._rip||e.rip||''}"
+            onchange="modUpSlot(${i},'_rip',this.value)"
+            style="width:76px;padding:4px 6px;font-size:13px">
+        </div>
+        <div class="slot-param">
+          <label style="font-size:9px;color:var(--gray600)">Nota spec.</label>
+          <input type="text" value="${e._note||''}" placeholder="opzionale"
+            onchange="modUpSlot(${i},'_note',this.value)"
+            style="width:130px;padding:4px 6px;font-size:13px">
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="modRmSlot(${i})">✕</button>
+    </div>`).join('');
+}
+
+function modUpSlot(i, key, val) {
+  modGiorni[modGiornoAttivo].esercizi[i][key] = val;
+}
+
+function modRmSlot(i) {
+  modGiorni[modGiornoAttivo].esercizi.splice(i, 1);
+  renderModGiornoTabs();
+  renderModGiornoEditor();
+}
+
+function modAddEsercizio() {
+  const id = document.getElementById('mod-picker').value;
+  if (!id) return;
+  const e = esercizi.find(x => x.id === id);
+  if (!e) return;
+  modGiorni[modGiornoAttivo].esercizi.push({ ...e, _serie: e.serie, _rip: e.rip, _note: '' });
+  renderModGiornoEditor();
+}
+
+function salvaModifica() {
+  const s = schede.find(x => x.id === schedaInModifica);
+  if (!s) return;
+
+  const nuovaData  = document.getElementById('mod-data').value;
+  const nuovoNome  = document.getElementById('mod-nome').value.trim() || s.nome;
+  const nuovaZona  = document.getElementById('mod-zona').value;
+  const nuovaFase  = document.getElementById('mod-fase').value;
+  const nuoveNote  = document.getElementById('mod-note-generali').value.trim();
+  const dataStr    = nuovaData
+    ? new Date(nuovaData).toLocaleDateString('it-IT')
+    : new Date().toLocaleDateString('it-IT');
+
+  // Costruisci HTML della nuova versione
+  const htmlNuovo = buildVersioneHTML({
+    nome: nuovoNome,
+    data: dataStr,
+    zona: nuovaZona,
+    fase: nuovaFase,
+    noteGen: nuoveNote,
+    giorni: modGiorni,
+    numGiorni: modGiorni.length,
+  });
+
+  // Archivia versione precedente in s.versioni[]
+  if (!s.versioni) s.versioni = [];
+  s.versioni.push({
+    data: s.data,
+    zona: s.zona,
+    fase: s.fase,
+    noteGen: s.noteGen || '',
+    giorni: s.giorni
+      ? s.giorni.map(g => ({ nome: g.nome, esercizi: [...g.esercizi] }))
+      : [{ nome: '', esercizi: [...(s.esercizi || [])] }],
+    html: s.html,
+    savedAt: s.updatedAt || s.createdAt,
+  });
+
+  // Aggiorna la scheda master con la nuova versione
+  s.nome     = nuovoNome;
+  s.data     = dataStr;
+  s.zona     = nuovaZona;
+  s.fase     = nuovaFase;
+  s.noteGen  = nuoveNote;
+  s.giorni   = modGiorni.map(g => ({ nome: g.nome, esercizi: [...g.esercizi] }));
+  s.numGiorni = modGiorni.length;
+  s.html     = htmlNuovo;
+  s.updatedAt = new Date().toISOString();
+
+  saveAll();
+  closeModal('modal-modifica');
+  renderSchede();
+  showToast(`✅ Versione ${s.versioni.length + 1} salvata — originale conservato`);
+}
+
+function buildVersioneHTML(cfg) {
+  const { nome, data, zona, fase, noteGen, giorni, numGiorni } = cfg;
+  const freqLabel = numGiorni === 1 ? '1 giorno / settimana'
+                  : numGiorni === 2 ? '2 giorni / settimana'
+                  : '3 giorni / settimana';
+
+  let out = '<div class="scheda-preview">'
+    + '<div class="scheda-header">'
+    + '<div class="scheda-header-inner">'
+    + '<div>'
+    + '<h2>Scheda di allenamento domiciliare</h2>'
+    + '<div class="meta"><strong>Paziente:</strong> ' + nome + ' &nbsp;|&nbsp; <strong>Data:</strong> ' + data + ' &nbsp;|&nbsp; <strong>Frequenza:</strong> ' + freqLabel + '</div>'
+    + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Intensità:</strong> ' + fase : '') + '</div>' : '')
+    + '</div>'
+    + '<img src="' + LOGO + '" style="height:36px;opacity:.9" alt="Physio Shoulder">'
+    + '</div>'
+    + '</div>';
+
+  if (noteGen) {
+    out += `<div class="note-generali-block">
+      <div class="label">📋 Note per il paziente</div>
+      <div class="testo">${noteGen}</div>
+    </div>`;
+  }
+
+  const giorniConEserc = giorni.filter(g => g.esercizi.length > 0);
+  if (!giorniConEserc.length) {
+    out += '<div class="empty"><p>Nessun esercizio aggiunto</p></div>';
+  } else {
+    giorni.forEach((giorno, gi) => {
+      if (!giorno.esercizi.length) return;
+      const label = giorno.nome
+        ? `Giorno ${gi+1} — ${giorno.nome}`
+        : numGiorni > 1 ? `Giorno ${gi+1}` : 'Programma di esercizi';
+      out += `<div class="scheda-section-label">${label}</div>`;
+      giorno.esercizi.forEach((e, i) => {
+        out += `<div class="esercizio-row">
+          <div>
+            <div class="esercizio-nome"><span class="esercizio-num">${i+1}</span>${e.nome}</div>
+            ${e.desc ? '<div class="esercizio-desc">'+e.desc+'</div>' : ''}
+            ${e.link ? '<div style="margin-top:6px;padding-left:32px"><a href="'+e.link+'" target="_blank" class="link-badge">▶ Video esplicativo</a></div>' : ''}
+          </div>
+          <div class="esercizio-params">
+            <div class="param-box"><div class="param-label">Serie</div><div class="param-val">${e._serie||e.serie||'—'}</div></div>
+            <div class="param-box"><div class="param-label">Rip./Tempo</div><div class="param-val" style="font-size:11px">${e._rip||e.rip||'—'}</div></div>
+            <div class="param-box"><div class="param-label">Recupero</div><div class="param-val" style="font-size:11px">${e.rec||'—'}</div></div>
+            ${e.pct ? '<div class="param-box"><div class="param-label">Intensità</div><div class="param-val" style="font-size:11px;color:#92600a">'+e.pct+'</div></div>' : ''}
+          </div>
+        </div>`;
+        const nota = (e._note||'') || e.note || '';
+        if (nota) out += `<div class="note-row">⚠️ ${nota}</div>`;
+      });
+    });
+  }
+
+  out += `<div class="scheda-footer">
+    <span>In caso di dolore, interrompere l'esercizio e contattare il fisioterapista.</span>
+    <span style="font-weight:600;color:var(--honey)">Physio Shoulder</span>
+  </div></div>`;
+  return out;
+}
+
+
+// ---- INIT ----
+document.getElementById('g-data').valueAsDate = new Date();
+initData();
+
+// ---- PWA: registrazione service worker ----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+  });
+}
+
+</script>
+</body>
+</html>
