@@ -1,7 +1,7 @@
 // FisioDB — Physio Shoulder — Service Worker
 // Cache-first per l'app shell, network passthrough per Supabase e altre API esterne.
 
-const CACHE_NAME = 'fisiodb-shell-v1';
+const CACHE_NAME = 'fisiodb-shell-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,7 +9,8 @@ const APP_SHELL = [
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
 ];
 
 self.addEventListener('install', (event) => {

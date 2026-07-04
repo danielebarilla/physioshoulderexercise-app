@@ -17,6 +17,9 @@
 <!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
+<!-- PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
   :root {
     color-scheme: light;
@@ -107,8 +110,9 @@
   input,select,textarea {
     border:1px solid var(--gray300); border-radius:6px;
     padding:9px 11px; font-size:14px; font-family:inherit;
-    background:var(--gray50); transition:border .15s, box-shadow .15s;
+    background:#fff; color:var(--gray900); transition:border .15s, box-shadow .15s;
   }
+  input::placeholder, textarea::placeholder { color:#8b9793; opacity:1; }
   input:focus,select:focus,textarea:focus {
     outline:none; border-color:var(--honey); background:#fff;
     box-shadow:0 0 0 3px rgba(222,158,54,.18);
@@ -511,8 +515,6 @@
       <div class="btn-group no-print" style="margin-top:4px;flex-wrap:wrap">
         <button class="btn btn-honey" onclick="salvaScheda()">💾 Salva scheda</button>
         <button class="btn btn-primary" onclick="anteprimaScheda()">👁 Anteprima</button>
-        <button class="btn btn-secondary" onclick="stampaScheda()">🖨 Stampa / PDF</button>
-        <button class="btn btn-secondary" onclick="condividiScheda(null)" style="background:#25D366;color:#fff;border-color:#25D366">📱 Condividi</button>
         <button class="btn btn-danger btn-sm" onclick="resetScheda()">↺ Reset</button>
       </div>
     </div>
@@ -618,7 +620,7 @@
     <div id="preview-content"></div>
     <hr>
     <div class="btn-group no-print">
-      <button class="btn btn-primary" onclick="stampaScheda()">🖨 Stampa / Salva PDF</button>
+      <button class="btn btn-primary" onclick="stampaScheda()">📄 Scarica PDF</button>
       <button class="btn btn-secondary" onclick="closeModal('modal-preview')">Chiudi</button>
     </div>
   </div>
@@ -1285,6 +1287,15 @@ function resetScheda() {
 }
 
 // ---- BUILD HTML SCHEDA ----
+// ---- ICONE SOCIAL (footer schede) ----
+const ICON_WEB = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+const ICON_IG  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.5" y2="6.5"/></svg>';
+const SOCIAL_FOOTER_HTML = '<div style="display:flex;align-items:center;gap:12px">'
+  + '<a href="https://www.physioshoulder.it" target="_blank" rel="noopener" title="www.physioshoulder.it" style="color:#004640;line-height:0">' + ICON_WEB + '</a>'
+  + '<a href="https://instagram.com/physio_shoulder" target="_blank" rel="noopener" title="@physio_shoulder" style="color:#004640;line-height:0">' + ICON_IG + '</a>'
+  + '<span style="font-weight:600;color:var(--honey)">Physio Shoulder</span>'
+  + '</div>';
+
 function buildSchedaHTML(inline) {
   const nome         = document.getElementById('g-nome').value.trim() || 'Paziente';
   const data         = document.getElementById('g-data').value;
@@ -1300,7 +1311,7 @@ function buildSchedaHTML(inline) {
     + '<div class="scheda-header">'
     + '<div class="scheda-header-inner">'
     + '<div>'
-    + '<h2>Scheda di allenamento domiciliare</h2>'
+    + '<h2>Scheda di allenamento</h2>'
     + '<div class="meta"><strong>Paziente:</strong> ' + nome + ' &nbsp;|&nbsp; <strong>Data:</strong> ' + dataStr + ' &nbsp;|&nbsp; <strong>Frequenza:</strong> ' + freqLabel + '</div>'
     + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Intensità:</strong> ' + fase : '') + '</div>' : '')
     + '</div>'
@@ -1349,7 +1360,7 @@ function buildSchedaHTML(inline) {
 
   out += `<div class="scheda-footer">
     <span>In caso di dolore, interrompere l'esercizio e contattare il fisioterapista.</span>
-    <span style="font-weight:600;color:var(--honey)">Physio Shoulder</span>
+    ${SOCIAL_FOOTER_HTML}
   </div></div>`;
 
   return { schedaHtml: out, meta: { nome, data: dataStr, zona, fase, freq: freqLabel, obiettivi, noteGen } };
@@ -1407,111 +1418,55 @@ function showToast(msg, duration=2800) {
   }, duration);
 }
 
-// ── STAMPA / PDF ────────────────────────────────────────
-function printContent(contenuto, titolo) {
-  // Concatenazione stringa invece di template literal (Safari iOS safe)
-  const fullHTML = '<!DOCTYPE html><html><head>'
-    + '<meta charset="UTF-8">'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-    + '<title>' + (titolo || 'Scheda Physio Shoulder') + '</title>'
-    + '<style>' + PRINT_CSS
-    + '@media screen { body { padding:16px; background:#fff; } }'
-    + '</style></head><body>' + contenuto + '</body></html>';
+// ── GENERAZIONE PDF (client-side, html2pdf.js) ───────────
+async function generatePdfBlob(contenutoHtml, titolo) {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;';
+  wrapper.innerHTML = '<style>' + PRINT_CSS + '</style>' + contenutoHtml;
+  document.body.appendChild(wrapper);
+  try {
+    const opt = {
+      margin: 0,
+      filename: (titolo || 'scheda') + '.pdf',
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    const blob = await html2pdf().from(wrapper).set(opt).outputPdf('blob');
+    return blob;
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+}
 
-  const blob = new Blob([fullHTML], { type: 'text/html' });
-  const url  = URL.createObjectURL(blob);
-
+function scaricaBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href   = url;
-  a.target = '_blank';
-  a.rel    = 'noopener noreferrer';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    setTimeout(() => showToast(
-      isIOS ? '📄 Tocca Condividi → Stampa per PDF' : '📄 Menu ⋮ → Stampa per PDF',
-      4000
-    ), 800);
-  }
-}
-
-
-// ── STAMPA / PDF ────────────────────────────────────────
-function stampaScheda() {
-  const ris = buildSchedaHTML(true);
-  if (!ris || !ris.schedaHtml) {
-    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
-    return;
-  }
-  printContent(ris.schedaHtml, 'Scheda Physio Shoulder');
-}
-
-// ── CONDIVIDI (Web Share API + fallback download) ───────
-async function condividiScheda(id) {
-  const dati = getSchedaData(id);
-  if (!dati) return;
-
-  const titolo   = 'Scheda ' + dati.nome + ' — Physio Shoulder';
-  const fileHTML = buildHTMLFile(dati.html, titolo);
-  const nomeFile = 'scheda_' + dati.nome.replace(/\s+/g, '_') + '.html';
-  const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isAndroid = /Android/i.test(navigator.userAgent);
-
-  // Su iOS: apri in nuova tab, l'utente usa il foglio Share di Safari
-  // È il metodo più affidabile — WhatsApp su iOS accetta file da Safari Share
-  if (isIOS) {
-    const blob = new Blob([fileHTML], { type: 'text/html' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.target   = '_blank';
-    a.rel      = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 120000);
-    setTimeout(() => showToast('📤 Tocca il tasto Condividi (□↑) di Safari', 4500), 600);
-    return;
-  }
-
-  // Su Android: Web Share API con file
-  if (isAndroid && navigator.share) {
-    try {
-      const blob = new Blob([fileHTML], { type: 'text/html' });
-      const file = new File([blob], nomeFile, { type: 'text/html' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ title: titolo, files: [file] });
-        return;
-      }
-    } catch(e) {
-      if (e.name === 'AbortError') return;
-    }
-    // Fallback Android: download
-    const blob2 = new Blob([fileHTML], { type: 'text/html' });
-    const url2  = URL.createObjectURL(blob2);
-    const a2    = Object.assign(document.createElement('a'), { href: url2, download: nomeFile });
-    document.body.appendChild(a2);
-    a2.click();
-    document.body.removeChild(a2);
-    setTimeout(() => URL.revokeObjectURL(url2), 30000);
-    showToast('📥 File in Download — aprilo e condividi', 3500);
-    return;
-  }
-
-  // Desktop: download diretto
-  const blob = new Blob([fileHTML], { type: 'text/html' });
-  const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), { href: url, download: nomeFile });
+  a.href = url;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 30000);
-  showToast('📥 File scaricato', 2500);
+}
+
+// ── STAMPA / PDF (scarica subito il PDF, nessuna pagina intermedia) ──
+async function stampaScheda() {
+  const contenuto = document.getElementById('preview-content').innerHTML;
+  if (!contenuto || !contenuto.trim()) {
+    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
+    return;
+  }
+  showToast('⏳ Generazione PDF…', 2500);
+  try {
+    const blob = await generatePdfBlob(contenuto, 'Scheda Physio Shoulder');
+    scaricaBlob(blob, 'scheda_physio_shoulder.pdf');
+    showToast('✅ PDF scaricato');
+  } catch (e) {
+    console.error('Errore generazione PDF:', e);
+    showToast('⚠️ Errore generazione PDF', 3000);
+  }
 }
 
 // ── SALVA SCHEDA ────────────────────────────────────────
@@ -1567,7 +1522,7 @@ function renderSchede() {
           </div>
         </div>
         <div class="btn-group">
-          <button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">👁 Vedi</button>
+          <button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">👁 Anteprima</button>
           <button class="btn btn-primary btn-sm" onclick="apriModifica('${s.id}')">✏️ Modifica</button>
           <button class="btn btn-secondary btn-sm" onclick="printSaved('${s.id}')">🖨</button>
           <button class="btn btn-sm" onclick="condividiScheda('${s.id}')" style="background:#25D366;color:#fff;border-color:#25D366;border:1.5px solid">📱</button>
@@ -1590,10 +1545,18 @@ function viewScheda(id) {
   openModal('modal-preview');
 }
 
-function printSaved(id) {
+async function printSaved(id) {
   const s = schede.find(x => x.id === id);
   if (!s) return;
-  printContent(s.html, 'Scheda ' + s.nome);
+  showToast('⏳ Generazione PDF…', 2500);
+  try {
+    const blob = await generatePdfBlob(s.html, 'Scheda ' + s.nome);
+    scaricaBlob(blob, 'scheda_' + s.nome.replace(/\s+/g, '_') + '.pdf');
+    showToast('✅ PDF scaricato');
+  } catch (e) {
+    console.error('Errore generazione PDF:', e);
+    showToast('⚠️ Errore generazione PDF', 3000);
+  }
 }
 
 function delScheda(id) {
@@ -1658,45 +1621,27 @@ function getSchedaData(id) {
   return { html: risGSD.schedaHtml, nome, zona, data };
 }
 
-function buildHTMLFile(htmlContent, titolo) {
-  // Concatenazione stringa invece di template literal (Safari iOS safe)
-  return '<!DOCTYPE html><html lang="it"><head>'
-    + '<meta charset="UTF-8">'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1.0">'
-    + '<title>' + (titolo || 'Scheda Physio Shoulder') + '</title>'
-    + '<style>'
-    + '* { box-sizing:border-box; margin:0; padding:0; }'
-    + 'body { font-family:system-ui,-apple-system,sans-serif; background:#d2dfdd; padding:16px; }'
-    + PRINT_CSS
-    + 'body { background:#d2dfdd !important; }'
-    + '.scheda-preview { max-width:700px; margin:0 auto; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.15); }'
-    + '.link-badge { display:inline-flex !important; }'
-    + '.esercizio-row { grid-template-columns:2fr auto; gap:12px; }'
-    + '@media (max-width:600px) {'
-    + '  body { padding:8px; }'
-    + '  .esercizio-row { grid-template-columns:1fr; }'
-    + '  .esercizio-params { justify-content:flex-start; margin-top:8px; }'
-    + '}'
-    + '</style></head><body>'
-    + htmlContent
-    + '</body></html>';
-}
-
-
 async function condividiScheda(id) {
   const dati = getSchedaData(id);
   if (!dati) return;
 
-  const titolo = `Scheda ${dati.nome} — Physio Shoulder`;
-  const fileHTML = buildHTMLFile(dati.html, titolo);
+  const titolo   = `Scheda ${dati.nome} — Physio Shoulder`;
+  const nomeFile = `scheda_${dati.nome.replace(/\s+/g,'_')}.pdf`;
 
-  // Web Share API (iOS Safari 15+, Android Chrome 89+)
+  showToast('⏳ Generazione PDF…', 2500);
+  let blob;
+  try {
+    blob = await generatePdfBlob(dati.html, titolo);
+  } catch (e) {
+    console.error('Errore generazione PDF:', e);
+    showToast('⚠️ Errore generazione PDF', 3000);
+    return;
+  }
+
+  // Web Share API con file PDF (iOS Safari 15+, Android Chrome 89+)
   if (navigator.share && navigator.canShare) {
     try {
-      const blob = new Blob([fileHTML], { type: 'text/html' });
-      const file = new File([blob], `scheda_${dati.nome.replace(/\s+/g,'_')}.html`, { type: 'text/html' });
-
-      // Prova prima con file allegato
+      const file = new File([blob], nomeFile, { type: 'application/pdf' });
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           title: titolo,
@@ -1710,26 +1655,10 @@ async function condividiScheda(id) {
     }
   }
 
-  // Fallback: scarica il file HTML
-  try {
-    const blob = new Blob([fileHTML], { type: 'text/html' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `scheda_${dati.nome.replace(/\s+/g,'_')}_${dati.data.replace(/\//g,'-')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-
-    // Guida per mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      setTimeout(() => showToast('📥 File scaricato — allegalo su WhatsApp!', 3500), 600);
-    }
-  } catch(e) {
-    showToast('⚠️ Errore generazione file', 3000);
-  }
+  // Fallback: scarica direttamente il PDF
+  scaricaBlob(blob, nomeFile);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  showToast(isMobile ? '📥 PDF scaricato — allegalo su WhatsApp!' : '📥 PDF scaricato', 3500);
 }
 
 
@@ -1973,7 +1902,7 @@ function buildVersioneHTML(cfg) {
     + '<div class="scheda-header">'
     + '<div class="scheda-header-inner">'
     + '<div>'
-    + '<h2>Scheda di allenamento domiciliare</h2>'
+    + '<h2>Scheda di allenamento</h2>'
     + '<div class="meta"><strong>Paziente:</strong> ' + nome + ' &nbsp;|&nbsp; <strong>Data:</strong> ' + data + ' &nbsp;|&nbsp; <strong>Frequenza:</strong> ' + freqLabel + '</div>'
     + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Intensità:</strong> ' + fase : '') + '</div>' : '')
     + '</div>'
@@ -2020,7 +1949,7 @@ function buildVersioneHTML(cfg) {
 
   out += `<div class="scheda-footer">
     <span>In caso di dolore, interrompere l'esercizio e contattare il fisioterapista.</span>
-    <span style="font-weight:600;color:var(--honey)">Physio Shoulder</span>
+    ${SOCIAL_FOOTER_HTML}
   </div></div>`;
   return out;
 }
