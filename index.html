@@ -17,9 +17,6 @@
 <!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
-<!-- PDF generation -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
 <style>
   :root {
     color-scheme: light;
@@ -621,7 +618,7 @@
     <div id="preview-content"></div>
     <hr>
     <div class="btn-group no-print">
-      <button class="btn btn-primary" onclick="stampaScheda()">📄 Scarica PDF</button>
+      <button class="btn btn-primary" onclick="stampaScheda()">🖨 Stampa / Salva PDF</button>
       <button class="btn btn-secondary" onclick="closeModal('modal-preview')">Chiudi</button>
     </div>
   </div>
@@ -1419,54 +1416,61 @@ function showToast(msg, duration=2800) {
   }, duration);
 }
 
-// ── GENERAZIONE PDF (client-side, html2pdf.js) ───────────
-async function generatePdfBlob(contenutoHtml, titolo) {
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;';
-  wrapper.innerHTML = '<style>' + PRINT_CSS + '</style>' + contenutoHtml;
-  document.body.appendChild(wrapper);
-  try {
-    const opt = {
-      margin: 0,
-      filename: (titolo || 'scheda') + '.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+// ── STAMPA NATIVA (Safari/WebKit-safe: usa il motore di stampa del browser
+//    invece di "fotografare" l'HTML — niente più PDF bianchi) ──────────
+function apriStampaPdf(contenutoHtml, titolo) {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const cleanup = () => { if (iframe.parentNode) document.body.removeChild(iframe); };
+
+    const doPrint = () => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        setTimeout(cleanup, 1000);
+      }
     };
-    const blob = await html2pdf().from(wrapper).set(opt).outputPdf('blob');
-    return blob;
-  } finally {
-    document.body.removeChild(wrapper);
-  }
+
+    try {
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(
+        '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+        + '<title>' + (titolo || 'Scheda Physio Shoulder') + '</title>'
+        + '<style>' + PRINT_CSS + '</style>'
+        + '</head><body>' + contenutoHtml + '</body></html>'
+      );
+      doc.close();
+    } catch (e) {
+      cleanup();
+      reject(e);
+      return;
+    }
+
+    setTimeout(doPrint, 300);
+  });
 }
 
-function scaricaBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
-
-// ── STAMPA / PDF (scarica subito il PDF, nessuna pagina intermedia) ──
+// ── STAMPA / PDF (apre subito la finestra di stampa di sistema —
+//    su iPhone/Mac lì si trova anche il tasto "Salva/Condividi come PDF") ──
 async function stampaScheda() {
   const contenuto = document.getElementById('preview-content').innerHTML;
   if (!contenuto || !contenuto.trim()) {
     showToast('⚠️ Aggiungi almeno un esercizio', 3000);
     return;
   }
-  showToast('⏳ Generazione PDF…', 2500);
   try {
-    const blob = await generatePdfBlob(contenuto, 'Scheda Physio Shoulder');
-    scaricaBlob(blob, 'scheda_physio_shoulder.pdf');
-    showToast('✅ PDF scaricato');
+    await apriStampaPdf(contenuto, 'Scheda Physio Shoulder');
   } catch (e) {
-    console.error('Errore generazione PDF:', e);
-    showToast('⚠️ Errore generazione PDF', 3000);
+    console.error('Errore apertura stampa:', e);
+    showToast('⚠️ Errore apertura stampa', 3000);
   }
 }
 
@@ -1526,8 +1530,6 @@ function renderSchede() {
           <button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">👁 Anteprima</button>
           <button class="btn btn-primary btn-sm" onclick="apriModifica('${s.id}')">✏️ Modifica</button>
           <button class="btn btn-secondary btn-sm" onclick="printSaved('${s.id}')">🖨</button>
-          <button class="btn btn-sm" onclick="condividiScheda('${s.id}')" style="background:#25D366;color:#fff;border-color:#25D366;border:1.5px solid">📱</button>
-
           <button class="btn btn-danger btn-sm" onclick="delScheda('${s.id}')">🗑</button>
         </div>
       </div>
@@ -1549,14 +1551,11 @@ function viewScheda(id) {
 async function printSaved(id) {
   const s = schede.find(x => x.id === id);
   if (!s) return;
-  showToast('⏳ Generazione PDF…', 2500);
   try {
-    const blob = await generatePdfBlob(s.html, 'Scheda ' + s.nome);
-    scaricaBlob(blob, 'scheda_' + s.nome.replace(/\s+/g, '_') + '.pdf');
-    showToast('✅ PDF scaricato');
+    await apriStampaPdf(s.html, 'Scheda ' + s.nome);
   } catch (e) {
-    console.error('Errore generazione PDF:', e);
-    showToast('⚠️ Errore generazione PDF', 3000);
+    console.error('Errore apertura stampa:', e);
+    showToast('⚠️ Errore apertura stampa', 3000);
   }
 }
 
@@ -1600,67 +1599,7 @@ function renderPazienti() {
 
 
 
-// ---- CONDIVISIONE ----
 
-function getSchedaData(id) {
-  // Se id è null = scheda in costruzione, altrimenti scheda salvata
-  if (id) {
-    const s = schede.find(x => x.id === id);
-    return s ? { html: s.html, nome: s.nome, zona: s.zona || '', data: s.data } : null;
-  }
-  // Scheda in costruzione
-  if (!giorni.some(g => g.esercizi.length)) {
-    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
-    return null;
-  }
-  const nome = document.getElementById('g-nome').value.trim() || 'Paziente';
-  const zona = document.getElementById('g-zona').value.trim() || '';
-  const data = document.getElementById('g-data').value
-    ? new Date(document.getElementById('g-data').value).toLocaleDateString('it-IT')
-    : new Date().toLocaleDateString('it-IT');
-  const risGSD = buildSchedaHTML(true);
-  return { html: risGSD.schedaHtml, nome, zona, data };
-}
-
-async function condividiScheda(id) {
-  const dati = getSchedaData(id);
-  if (!dati) return;
-
-  const titolo   = `Scheda ${dati.nome} — Physio Shoulder`;
-  const nomeFile = `scheda_${dati.nome.replace(/\s+/g,'_')}.pdf`;
-
-  showToast('⏳ Generazione PDF…', 2500);
-  let blob;
-  try {
-    blob = await generatePdfBlob(dati.html, titolo);
-  } catch (e) {
-    console.error('Errore generazione PDF:', e);
-    showToast('⚠️ Errore generazione PDF', 3000);
-    return;
-  }
-
-  // Web Share API con file PDF (iOS Safari 15+, Android Chrome 89+)
-  if (navigator.share && navigator.canShare) {
-    try {
-      const file = new File([blob], nomeFile, { type: 'application/pdf' });
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: titolo,
-          text: `Scheda di allenamento di ${dati.nome} — Physio Shoulder`,
-          files: [file],
-        });
-        return;
-      }
-    } catch(e) {
-      if (e.name === 'AbortError') return; // utente ha annullato
-    }
-  }
-
-  // Fallback: scarica direttamente il PDF
-  scaricaBlob(blob, nomeFile);
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  showToast(isMobile ? '📥 PDF scaricato — allegalo su WhatsApp!' : '📥 PDF scaricato', 3500);
-}
 
 
 // ---- MODIFICA SCHEDA ----
