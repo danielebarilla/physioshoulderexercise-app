@@ -1000,16 +1000,7 @@ function renderGiorniContainer() {
         out += `<div class="exercise-slot"
             id="slot-${g}-${i}"
             data-giorno="${g}" data-idx="${i}"
-            draggable="${isActive}"
-            style="${isActive?'':'opacity:.75;pointer-events:none'}"
-            ondragstart="slotDragStart(event)"
-            ondragover="slotDragOver(event)"
-            ondragleave="slotDragLeave(event)"
-            ondrop="slotDrop(event)"
-            ondragend="slotDragEnd(event)"
-            ontouchstart="touchStart(event)"
-            ontouchmove="touchMove(event)"
-            ontouchend="touchEnd(event)">
+            style="${isActive?'':'opacity:.75'}">
           <span class="grip" title="Trascina per riordinare">⠿</span>
           <div class="slot-name">${e.nome}</div>
           <div class="slot-params">
@@ -1030,6 +1021,114 @@ function renderGiorniContainer() {
     out += `</div>`;
   }
   cont.innerHTML = out;
+  initDragDrop();
+}
+
+
+// ── DRAG & DROP (addEventListener dopo render) ────────────────────────────────
+let dragSrcG = null;
+let dragSrcI = null;
+
+function initDragDrop() {
+  const slots = document.querySelectorAll('.exercise-slot');
+  slots.forEach(slot => {
+    const g = parseInt(slot.dataset.giorno);
+    const i = parseInt(slot.dataset.idx);
+    const isActive = (g === giornoAttivo);
+    if (!isActive) return;
+
+    // Abilita drag solo sul grip
+    const grip = slot.querySelector('.grip');
+    if (!grip) return;
+
+    grip.addEventListener('mousedown', () => { slot.setAttribute('draggable','true'); });
+    slot.addEventListener('dragstart', e => {
+      dragSrcG = g; dragSrcI = i;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(i));
+      setTimeout(() => slot.classList.add('dragging'), 0);
+    });
+    slot.addEventListener('dragend', () => {
+      slot.classList.remove('dragging');
+      slot.setAttribute('draggable','false');
+      document.querySelectorAll('.exercise-slot').forEach(s => s.classList.remove('drag-over'));
+    });
+    slot.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (parseInt(slot.dataset.idx) !== dragSrcI) slot.classList.add('drag-over');
+    });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e => {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      const targetI = parseInt(slot.dataset.idx);
+      if (dragSrcG !== g || dragSrcI === targetI) return;
+      const arr = giorni[dragSrcG].esercizi;
+      const [moved] = arr.splice(dragSrcI, 1);
+      arr.splice(targetI, 0, moved);
+      renderGiorniContainer();
+    });
+
+    // Touch support
+    let touchClone = null, touchStartY = 0, touchStartX = 0;
+    grip.addEventListener('touchstart', e => {
+      e.preventDefault();
+      dragSrcG = g; dragSrcI = i;
+      const touch = e.touches[0];
+      touchStartY = touch.clientY;
+      touchStartX = touch.clientX;
+      const rect = slot.getBoundingClientRect();
+      touchClone = slot.cloneNode(true);
+      Object.assign(touchClone.style, {
+        position:'fixed', left:rect.left+'px', top:rect.top+'px',
+        width:rect.width+'px', opacity:'.85', zIndex:'9999',
+        pointerEvents:'none', borderRadius:'8px',
+        border:'2px dashed var(--honey)', background:'#fff',
+        boxShadow:'0 8px 24px rgba(0,0,0,.2)'
+      });
+      document.body.appendChild(touchClone);
+      slot.classList.add('dragging');
+    }, {passive:false});
+
+    grip.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!touchClone) return;
+      const touch = e.touches[0];
+      const dy = touch.clientY - touchStartY;
+      const dx = touch.clientX - touchStartX;
+      const rect = slot.getBoundingClientRect();
+      touchClone.style.top  = (rect.top  + dy) + 'px';
+      touchClone.style.left = (rect.left + dx) + 'px';
+      // Evidenzia slot target
+      touchClone.style.display = 'none';
+      const under = document.elementFromPoint(touch.clientX, touch.clientY);
+      touchClone.style.display = '';
+      document.querySelectorAll('.exercise-slot').forEach(s => s.classList.remove('drag-over'));
+      const target = under?.closest('.exercise-slot');
+      if (target && target !== slot) target.classList.add('drag-over');
+    }, {passive:false});
+
+    grip.addEventListener('touchend', e => {
+      if (!touchClone) return;
+      const touch = e.changedTouches[0];
+      touchClone.style.display = 'none';
+      const under = document.elementFromPoint(touch.clientX, touch.clientY);
+      touchClone.remove(); touchClone = null;
+      slot.classList.remove('dragging');
+      document.querySelectorAll('.exercise-slot').forEach(s => s.classList.remove('drag-over'));
+      const target = under?.closest('.exercise-slot');
+      if (target && target !== slot) {
+        const targetI = parseInt(target.dataset.idx);
+        const targetG = parseInt(target.dataset.giorno);
+        if (dragSrcG === targetG && dragSrcI !== targetI) {
+          const arr = giorni[dragSrcG].esercizi;
+          const [moved] = arr.splice(dragSrcI, 1);
+          arr.splice(targetI, 0, moved);
+        }
+      }
+      renderGiorniContainer();
+    });
+  });
 }
 
 // ---- PICKER ----
@@ -1822,128 +1921,6 @@ function buildVersioneHTML(cfg) {
 }
 
 
-
-// ── DRAG & DROP RIORDINO ESERCIZI ────────────────────────────────────────────
-let dragSrcG = null;
-let dragSrcI = null;
-let touchDragEl = null;
-let touchClone = null;
-let touchStartY = 0;
-
-function slotDragStart(e) {
-  const el = e.currentTarget;
-  dragSrcG = parseInt(el.dataset.giorno);
-  dragSrcI = parseInt(el.dataset.idx);
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', dragSrcI);
-  setTimeout(() => el.classList.add('dragging'), 0);
-}
-
-function slotDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  const el = e.currentTarget;
-  if (el.dataset.idx != dragSrcI) el.classList.add('drag-over');
-}
-
-function slotDragLeave(e) {
-  e.currentTarget.classList.remove('drag-over');
-}
-
-function slotDrop(e) {
-  e.preventDefault();
-  const el = e.currentTarget;
-  el.classList.remove('drag-over');
-  const targetI = parseInt(el.dataset.idx);
-  const targetG = parseInt(el.dataset.giorno);
-  if (dragSrcG !== targetG || dragSrcI === targetI) return;
-  // Sposta l'elemento nell'array
-  const arr = giorni[dragSrcG].esercizi;
-  const [moved] = arr.splice(dragSrcI, 1);
-  arr.splice(targetI, 0, moved);
-  renderGiorniContainer();
-}
-
-function slotDragEnd(e) {
-  e.currentTarget.classList.remove('dragging');
-  document.querySelectorAll('.exercise-slot').forEach(s => s.classList.remove('drag-over'));
-}
-
-// ── TOUCH DRAG (mobile) ──────────────────────────────────────────────────────
-function touchStart(e) {
-  const el = e.currentTarget;
-  if (!el.getAttribute('draggable') || el.getAttribute('draggable') === 'false') return;
-  // Solo se tocca il grip
-  const grip = el.querySelector('.grip');
-  const touch = e.touches[0];
-  const gr = grip.getBoundingClientRect();
-  const onGrip = touch.clientX >= gr.left && touch.clientX <= gr.right
-               && touch.clientY >= gr.top  && touch.clientY <= gr.bottom;
-  if (!onGrip) return;
-
-  dragSrcG = parseInt(el.dataset.giorno);
-  dragSrcI = parseInt(el.dataset.idx);
-  touchStartY = touch.clientY;
-  touchDragEl = el;
-
-  // Crea clone visivo
-  touchClone = el.cloneNode(true);
-  touchClone.style.cssText = `position:fixed;left:${el.getBoundingClientRect().left}px;
-    top:${el.getBoundingClientRect().top}px;width:${el.offsetWidth}px;
-    opacity:.8;z-index:9999;pointer-events:none;background:#fff;
-    border:2px dashed var(--honey);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2)`;
-  document.body.appendChild(touchClone);
-  el.classList.add('dragging');
-  e.preventDefault();
-}
-
-function touchMove(e) {
-  if (!touchClone) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  const dy = touch.clientY - touchStartY;
-  touchClone.style.top = (touchDragEl.getBoundingClientRect().top + dy) + 'px';
-
-  // Trova elemento sotto il dito
-  touchClone.style.display = 'none';
-  const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
-  touchClone.style.display = '';
-  const targetSlot = underEl?.closest('.exercise-slot');
-
-  document.querySelectorAll('.exercise-slot').forEach(s => s.classList.remove('drag-over'));
-  if (targetSlot && targetSlot !== touchDragEl) {
-    targetSlot.classList.add('drag-over');
-  }
-}
-
-function touchEnd(e) {
-  if (!touchClone) return;
-  const touch = e.changedTouches[0];
-
-  // Trova slot target
-  touchClone.style.display = 'none';
-  const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
-  touchClone.style.display = '';
-  const targetSlot = underEl?.closest('.exercise-slot');
-
-  if (targetSlot && targetSlot !== touchDragEl) {
-    const targetI = parseInt(targetSlot.dataset.idx);
-    const targetG = parseInt(targetSlot.dataset.giorno);
-    if (dragSrcG === targetG && dragSrcI !== targetI) {
-      const arr = giorni[dragSrcG].esercizi;
-      const [moved] = arr.splice(dragSrcI, 1);
-      arr.splice(targetI, 0, moved);
-    }
-  }
-
-  // Cleanup
-  touchClone.remove();
-  touchClone = null;
-  touchDragEl?.classList.remove('dragging');
-  touchDragEl = null;
-  document.querySelectorAll('.exercise-slot').forEach(s => s.classList.remove('drag-over'));
-  renderGiorniContainer();
-}
 
 // ---- INIT ----
 document.getElementById('g-data').valueAsDate = new Date();
