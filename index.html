@@ -334,9 +334,8 @@
       <option>Fondamentali</option>
       <option>Complementari</option>
     </select>
-    <button class="btn btn-secondary btn-sm" onclick="resetFiltri()" title="Azzera tutti i filtri" style="flex-shrink:0">✕ Reset</button>
     <select id="filter-mat" onchange="renderEsercizi()" style="width:180px">
-      <option value="">Tutta l'attrezzatura</option>
+      <option value="">Tutte le attrezzature</option>
       <option>Corpo libero</option>
       <option>Elastico</option>
       <option>Manubri</option>
@@ -353,6 +352,7 @@
       <option>Fitball</option>
       <option>Bastone</option>
     </select>
+    <button class="btn btn-secondary btn-sm" onclick="resetFiltri()" title="Azzera tutti i filtri" style="flex-shrink:0">✕ Reset</button>
   </div>
   <div id="list-esercizi"></div>
 </div>
@@ -425,8 +425,8 @@
         <div class="form-grid" style="margin-bottom:9px">
           <div class="field">
             <label>Distretto</label>
-            <select id="g-distretto" onchange="renderPicker()">
-              <option value="">— tutti —</option>
+            <select id="g-distretto" onchange="updateZonaSpecifica()">
+              <option value="">Tutti i distretti</option>
               <option value="superiore">Parte Superiore</option>
               <option value="inferiore">Parte Inferiore</option>
               <option value="core">Core</option>
@@ -434,9 +434,15 @@
             </select>
           </div>
           <div class="field">
+            <label>Zona specifica</label>
+            <select id="g-zona-specifica" onchange="renderPicker()">
+              <option value="">Tutte le zone</option>
+            </select>
+          </div>
+          <div class="field">
             <label>Intensità</label>
             <select id="g-fase" onchange="renderPicker()">
-              <option value="">— tutti —</option>
+              <option value="">Tutti i livelli</option>
               <option>Post-infortunio</option>
               <option>Fondamentali</option>
               <option>Complementari</option>
@@ -445,7 +451,7 @@
           <div class="field full">
             <label>Attrezzatura</label>
             <select id="g-mat" onchange="renderPicker()">
-              <option value="">Tutta l'attrezzatura</option>
+              <option value="">Tutte le attrezzature</option>
       <option>Corpo libero</option>
       <option>Elastico</option>
       <option>Manubri</option>
@@ -645,15 +651,24 @@
 
       <!-- Aggiungi esercizio in modifica -->
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
-        <select id="mod-distretto" onchange="renderModPicker()" style="flex:1;min-width:120px">
-          <option value="">— distretto —</option>
+        <select id="mod-distretto" onchange="updateModZonaSpecifica()" style="flex:1;min-width:120px">
+          <option value="">Tutti i distretti</option>
           <option value="superiore">Parte Superiore</option>
           <option value="inferiore">Parte Inferiore</option>
           <option value="core">Core</option>
           <option value="cardio">Cardio</option>
         </select>
+        <select id="mod-zona-specifica" onchange="renderModPicker()" style="flex:1;min-width:120px">
+          <option value="">Tutte le zone</option>
+        </select>
+        <select id="mod-fase-filter" onchange="renderModPicker()" style="flex:1;min-width:120px">
+          <option value="">Tutti i livelli</option>
+          <option>Post-infortunio</option>
+          <option>Fondamentali</option>
+          <option>Complementari</option>
+        </select>
         <select id="mod-mat" onchange="renderModPicker()" style="flex:1;min-width:120px">
-          <option value="">Tutta l'attrezzatura</option>
+          <option value="">Tutte le attrezzature</option>
       <option>Corpo libero</option>
       <option>Elastico</option>
       <option>Manubri</option>
@@ -710,93 +725,93 @@ let schedaCorrente = [];
 if (!esercizi) {
   esercizi = [
     {id:uid(),nome:"Pull apart (warm-up)",zona:"Spalle",fase:"Post-infortunio",serie:1,rip:"30",rec:"—",mat:"Elastico",pct:"",desc:"Tirare l'elastico orizzontalmente portando le mani ai lati del petto. Attiva i rotatori esterni e i romboidei.",note:"Warm-up fondamentale per spalla. Eseguire prima di ogni seduta superiore.",link:"https://youtu.be/eZwnwWMkEL4"},
-    {id:uid(),nome:"Y Raise TRX",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"90\"",mat:"TRX",pct:"",desc:"Con il TRX corpo inclinato indietro, sollevare le braccia a Y sopra la testa attivando i muscoli della cuffia e del trapezio inferiore.",note:"Mantenere le scapole depresse. Ottimo per instabilità di spalla.",link:"https://youtu.be/TPzT7Ss0U-E"},
+    {id:uid(),nome:"Y Raise TRX",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"90 sec",mat:"TRX",pct:"",desc:"Con il TRX corpo inclinato indietro, sollevare le braccia a Y sopra la testa attivando i muscoli della cuffia e del trapezio inferiore.",note:"Mantenere le scapole depresse. Ottimo per instabilità di spalla.",link:"https://youtu.be/TPzT7Ss0U-E"},
     {id:uid(),nome:"Halo (warm-up)",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"1 giro",rec:"—",mat:"Kettlebell",pct:"5kg",desc:"Ruotare il kettlebell attorno alla testa mantenendo il core contratto. Warm-up rotatorio per la spalla.",note:"Peso leggero (5kg). Attivazione pre-allenamento spalla.",link:"https://www.youtube.com/watch?v=wJcmanVh5EE"},
-    {id:uid(),nome:"Inclined DB bench press",zona:"Petto",fase:"Fondamentali",serie:5,rip:"8",rec:"45\"",mat:"Manubri",pct:"60%",desc:"Panca inclinata, distensione con manubri. Traiettoria leggermente obliqua verso il petto superiore.",note:"Ritorno lento e controllato.",link:"https://youtu.be/LUxWvGRpwrk"},
-    {id:uid(),nome:"Landmine press",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"8",rec:"90\"",mat:"Bilanciere (landmine)",pct:"65%",desc:"Press con bilanciere a un angolo fisso. Spingere diagonalmente verso l'alto con un braccio solo.",note:"Ottimo per spalle con ROM ridotto.",link:"https://youtu.be/9OW4SONxuGI"},
-    {id:uid(),nome:"Australian pull up",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:"90\"",mat:"Corpo libero / sbarra",pct:"BW",desc:"Rematore a corpo libero. Corpo inclinato, talloni a terra, tirare il petto verso la sbarra.",note:"Corpo rigido come una tavola. Intensità modulabile con l'inclinazione.",link:"https://www.youtube.com/watch?v=-nn7X16rDG8"},
-    {id:uid(),nome:"Rear delt fly machine",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"10",rec:"30\"",mat:"Macchina",pct:"50%",desc:"Aperture per deltoide posteriore alla macchina. Aprire le braccia lateralmente con gomiti leggermente flessi.",note:"Focus sulla retrazione scapolare e deltoide posteriore.",link:"https://youtu.be/gh0g-BR1koA"},
-    {id:uid(),nome:"Single arm DB Rows",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"8+8",rec:"60\"",mat:"Manubri",pct:"60%",desc:"Rematore monolaterale con manubrio, ginocchio sul panchetto. Portare il manubrio verso l'anca contraendo il dorsale.",note:"Non ruotare il bacino.",link:"https://youtu.be/ZRSGpBUVcNw"},
-    {id:uid(),nome:"Wall squat (Swiss ball)",zona:"Quadricipiti",fase:"Post-infortunio",serie:2,rip:"20-28",rec:"90\"",mat:"Pallone / Swiss ball",pct:"",desc:"Squat isometrico contro il muro con Swiss ball. Scendere fino a 90° e mantenere la posizione.",note:"Swiss ball per ridurre lo stress patello-femorale. Piedi leggermente in avanti.",link:"https://youtu.be/vujBdEdSj5M"},
-    {id:uid(),nome:"Leg extension",zona:"Quadricipiti",fase:"Post-infortunio",serie:3,rip:"10",rec:"60\"",mat:"Macchina",pct:"",desc:"Estensione del ginocchio alla macchina. Movimento controllato in entrambe le fasi.",note:"Evitare iperestensione finale. Utile per rinforzo del quadricipite isolato.",link:"https://www.youtube.com/watch?v=uBM6IoEiXwM"},
-    {id:uid(),nome:"Seated leg curl",zona:"Femorali",fase:"Post-infortunio",serie:4,rip:"8-15",rec:"45-60\"",mat:"Macchina",pct:"70%",desc:"Leg curl seduto. Flettere il ginocchio contro resistenza in modo controllato.",note:"Fase eccentrica lenta (3 secondi).",link:"https://youtu.be/UqeOB0jve20"},
-    {id:uid(),nome:"Steps up (gradino >30cm)",zona:"Affondi",fase:"Post-infortunio",serie:3,rip:"15 per lato",rec:"60\"",mat:"Gradino / step",pct:"",desc:"Salire su un gradino alto almeno 30cm con una gamba sola. Controllare sia la salita che la discesa.",note:"Gradino circa 30cm. Busto eretto, ginocchio in allineamento con il piede.",link:"https://www.youtube.com/watch?v=X_oNQX4srHc"},
-    {id:uid(),nome:"TRX Leg Curl",zona:"Femorali",fase:"Fondamentali",serie:4,rip:"8",rec:"120\"",mat:"TRX",pct:"",desc:"Supino con i talloni nel TRX, sollevare il bacino e flettere le ginocchia portando i talloni verso i glutei.",note:"Eccellente per rinforzo ischiocrurale funzionale. Progressione: monopodalico.",link:"https://www.youtube.com/watch?v=JcJ2i2gUW3o"},
-    {id:uid(),nome:"Goblet Squat",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"15",rec:"90\"",mat:"Kettlebell / manubrio",pct:"",desc:"Squat con kettlebell o manubrio tenuto al petto. Scendere mantenendo il busto eretto e le ginocchia in asse con i piedi.",note:"Ottimo per mobilità caviglia e controllo del ginocchio.",link:"https://youtu.be/6vjkqXk7th0"},
-    {id:uid(),nome:"Hip Thrust single leg",zona:"Glutei",fase:"Fondamentali",serie:2,rip:"15+15",rec:"90\"",mat:"Panca",pct:"",desc:"Hip thrust monopodalico con spalle sulla panca. Spingere il bacino verso l'alto contraendo il gluteo.",note:"Fondamentale per il rinforzo del grande gluteo. Allineamento anca-spalla.",link:"https://youtu.be/J3qfu-rQgus"},
-    {id:uid(),nome:"Romanian Deadlift",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"60\"",mat:"Bilanciere / manubri",pct:"75%",desc:"Stacco rumeno: partenza eretta, cerniera dell'anca mantenendo la schiena neutra, fino a sentire stiramento degli ischio-crurali.",note:"Non flettere le ginocchia eccessivamente.",link:"https://youtu.be/bT5OOBgY4bc"},
-    {id:uid(),nome:"Abductor machine",zona:"Adduttori/Abduttori",fase:"Post-infortunio",serie:3,rip:"15-20",rec:"30\"",mat:"Macchina",pct:"",desc:"Abduzione dell'anca alla macchina verso l'esterno. Attivazione del medio gluteo.",note:"Movimento controllato, non usare l'inerzia.",link:"https://youtu.be/V7YHfRT2PLE"},
-    {id:uid(),nome:"Donkey Kick",zona:"Glutei",fase:"Post-infortunio",serie:2,rip:"10 per lato",rec:"30\"",mat:"Corpo libero",pct:"",desc:"Quadrupedica: estendere una gamba posteriormente verso l'alto contraendo il gluteo. Colonna lombare dritta.",note:"Non iperestendere la colonna lombare. Core contratto.",link:"https://youtu.be/SJ1Xuz9D-ZQ"},
-    {id:uid(),nome:"Back extension",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"60\"",mat:"Panca / macchina",pct:"10kg",desc:"Iperestensione del busto sulla panca apposita. Estendere la colonna contraendo i paravertebrali e i glutei.",note:"Non iperestendere oltre il neutro.",link:"https://youtu.be/nk7x3eZgsmM"},
+    {id:uid(),nome:"Inclined DB bench press",zona:"Petto",fase:"Fondamentali",serie:5,rip:"8",rec:"45 sec",mat:"Manubri",pct:"60%",desc:"Panca inclinata, distensione con manubri. Traiettoria leggermente obliqua verso il petto superiore.",note:"Ritorno lento e controllato.",link:"https://youtu.be/LUxWvGRpwrk"},
+    {id:uid(),nome:"Landmine press",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"8",rec:"90 sec",mat:"Bilanciere (landmine)",pct:"65%",desc:"Press con bilanciere a un angolo fisso. Spingere diagonalmente verso l'alto con un braccio solo.",note:"Ottimo per spalle con ROM ridotto.",link:"https://youtu.be/9OW4SONxuGI"},
+    {id:uid(),nome:"Australian pull up",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:"90 sec",mat:"Corpo libero / sbarra",pct:"BW",desc:"Rematore a corpo libero. Corpo inclinato, talloni a terra, tirare il petto verso la sbarra.",note:"Corpo rigido come una tavola. Intensità modulabile con l'inclinazione.",link:"https://www.youtube.com/watch?v=-nn7X16rDG8"},
+    {id:uid(),nome:"Rear delt fly machine",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"10",rec:"30 sec",mat:"Macchina",pct:"50%",desc:"Aperture per deltoide posteriore alla macchina. Aprire le braccia lateralmente con gomiti leggermente flessi.",note:"Focus sulla retrazione scapolare e deltoide posteriore.",link:"https://youtu.be/gh0g-BR1koA"},
+    {id:uid(),nome:"Single arm DB Rows",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"8+8",rec:"60 sec",mat:"Manubri",pct:"60%",desc:"Rematore monolaterale con manubrio, ginocchio sul panchetto. Portare il manubrio verso l'anca contraendo il dorsale.",note:"Non ruotare il bacino.",link:"https://youtu.be/ZRSGpBUVcNw"},
+    {id:uid(),nome:"Wall squat (Swiss ball)",zona:"Quadricipiti",fase:"Post-infortunio",serie:2,rip:"20-28",rec:"90 sec",mat:"Pallone / Swiss ball",pct:"",desc:"Squat isometrico contro il muro con Swiss ball. Scendere fino a 90° e mantenere la posizione.",note:"Swiss ball per ridurre lo stress patello-femorale. Piedi leggermente in avanti.",link:"https://youtu.be/vujBdEdSj5M"},
+    {id:uid(),nome:"Leg extension",zona:"Quadricipiti",fase:"Post-infortunio",serie:3,rip:"10",rec:"60 sec",mat:"Macchina",pct:"",desc:"Estensione del ginocchio alla macchina. Movimento controllato in entrambe le fasi.",note:"Evitare iperestensione finale. Utile per rinforzo del quadricipite isolato.",link:"https://www.youtube.com/watch?v=uBM6IoEiXwM"},
+    {id:uid(),nome:"Seated leg curl",zona:"Femorali",fase:"Post-infortunio",serie:4,rip:"8-15",rec:"45-60 sec",mat:"Macchina",pct:"70%",desc:"Leg curl seduto. Flettere il ginocchio contro resistenza in modo controllato.",note:"Fase eccentrica lenta (3 secondi).",link:"https://youtu.be/UqeOB0jve20"},
+    {id:uid(),nome:"Steps up (gradino >30cm)",zona:"Affondi",fase:"Post-infortunio",serie:3,rip:"15 per lato",rec:"60 sec",mat:"Gradino / step",pct:"",desc:"Salire su un gradino alto almeno 30cm con una gamba sola. Controllare sia la salita che la discesa.",note:"Gradino circa 30cm. Busto eretto, ginocchio in allineamento con il piede.",link:"https://www.youtube.com/watch?v=X_oNQX4srHc"},
+    {id:uid(),nome:"TRX Leg Curl",zona:"Femorali",fase:"Fondamentali",serie:4,rip:"8",rec:"120 sec",mat:"TRX",pct:"",desc:"Supino con i talloni nel TRX, sollevare il bacino e flettere le ginocchia portando i talloni verso i glutei.",note:"Eccellente per rinforzo ischiocrurale funzionale. Progressione: monopodalico.",link:"https://www.youtube.com/watch?v=JcJ2i2gUW3o"},
+    {id:uid(),nome:"Goblet Squat",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"15",rec:"90 sec",mat:"Kettlebell / manubrio",pct:"",desc:"Squat con kettlebell o manubrio tenuto al petto. Scendere mantenendo il busto eretto e le ginocchia in asse con i piedi.",note:"Ottimo per mobilità caviglia e controllo del ginocchio.",link:"https://youtu.be/6vjkqXk7th0"},
+    {id:uid(),nome:"Hip Thrust single leg",zona:"Glutei",fase:"Fondamentali",serie:2,rip:"15+15",rec:"90 sec",mat:"Panca",pct:"",desc:"Hip thrust monopodalico con spalle sulla panca. Spingere il bacino verso l'alto contraendo il gluteo.",note:"Fondamentale per il rinforzo del grande gluteo. Allineamento anca-spalla.",link:"https://youtu.be/J3qfu-rQgus"},
+    {id:uid(),nome:"Romanian Deadlift",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"60 sec",mat:"Bilanciere / manubri",pct:"75%",desc:"Stacco rumeno: partenza eretta, cerniera dell'anca mantenendo la schiena neutra, fino a sentire stiramento degli ischio-crurali.",note:"Non flettere le ginocchia eccessivamente.",link:"https://youtu.be/bT5OOBgY4bc"},
+    {id:uid(),nome:"Abductor machine",zona:"Adduttori/Abduttori",fase:"Post-infortunio",serie:3,rip:"15-20",rec:"30 sec",mat:"Macchina",pct:"",desc:"Abduzione dell'anca alla macchina verso l'esterno. Attivazione del medio gluteo.",note:"Movimento controllato, non usare l'inerzia.",link:"https://youtu.be/V7YHfRT2PLE"},
+    {id:uid(),nome:"Donkey Kick",zona:"Glutei",fase:"Post-infortunio",serie:2,rip:"10 per lato",rec:"30 sec",mat:"Corpo libero",pct:"",desc:"Quadrupedica: estendere una gamba posteriormente verso l'alto contraendo il gluteo. Colonna lombare dritta.",note:"Non iperestendere la colonna lombare. Core contratto.",link:"https://youtu.be/SJ1Xuz9D-ZQ"},
+    {id:uid(),nome:"Back extension",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"60 sec",mat:"Panca / macchina",pct:"10kg",desc:"Iperestensione del busto sulla panca apposita. Estendere la colonna contraendo i paravertebrali e i glutei.",note:"Non iperestendere oltre il neutro.",link:"https://youtu.be/nk7x3eZgsmM"},
     {id:uid(),nome:"Good morning",zona:"Femorali",fase:"Fondamentali",serie:3,rip:"10",rec:"—",mat:"Bilanciere / corpo libero",pct:"",desc:"Bilanciere sulle spalle, cerniera dell'anca mantenendo la schiena neutra fino a busto parallelo al suolo.",note:"Warm-up per ischio-crurali e paravertebrali. Peso leggero.",link:"https://www.youtube.com/watch?v=YA-h3n9L4YU"},
-    {id:uid(),nome:"Shoulder mobility",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"30\"",mat:"Corpo libero",pct:"",desc:"Cerchi, rotazioni e movimenti combinati per migliorare il ROM articolare della spalla.",note:"Massimo range articolare disponibile senza dolore.",link:""},
-    {id:uid(),nome:"Woodstick mobility",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"15",rec:"30\"",mat:"Bastone",pct:"",desc:"Esercizi di mobilità del rachide con bastone. Rotazioni, estensioni e flessioni guidate.",note:"Massimo range articolare. Niente dolore.",link:""},
+    {id:uid(),nome:"Shoulder mobility",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"30 sec",mat:"Corpo libero",pct:"",desc:"Cerchi, rotazioni e movimenti combinati per migliorare il ROM articolare della spalla.",note:"Massimo range articolare disponibile senza dolore.",link:""},
+    {id:uid(),nome:"Woodstick mobility",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"15",rec:"30 sec",mat:"Bastone",pct:"",desc:"Esercizi di mobilità del rachide con bastone. Rotazioni, estensioni e flessioni guidate.",note:"Massimo range articolare. Niente dolore.",link:""},
     {id:uid(),nome:"Scorpion",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"10 per lato",rec:"—",mat:"Corpo libero",pct:"",desc:"Prono: portare un piede verso la mano opposta ruotando il bacino e la colonna.",note:"Non forzare la rotazione oltre il comfort.",link:"https://www.youtube.com/watch?v=7GjzFFdUnQQ"},
-    {id:uid(),nome:"Standing Calf Raise",zona:"Polpacci",fase:"Fondamentali",serie:3,rip:"10-25",rec:"30\"",mat:"Corpo libero / macchina",pct:"50%",desc:"Sollevamento dei talloni in piedi. Salire sulle punte lentamente e scendere controllando.",note:"Ampiezza massima di movimento.",link:"https://youtu.be/g_E7_q1z2bo"},
-    {id:uid(),nome:"Turkish Get up",zona:"Addome",fase:"Complementari",serie:5,rip:"8+8",rec:"60\"",mat:"Kettlebell",pct:"8kg",desc:"Movimento complesso dal suolo alla posizione eretta con kettlebell sopra la testa. Richiede coordinazione e stabilità.",note:"8kg o più. Eseguire lentamente, ogni fase deve essere controllata.",link:"https://youtu.be/-_zTytmHM94"},
-    {id:uid(),nome:"Side Plank Reach Through",zona:"Addome",fase:"Fondamentali",serie:3,rip:"5 per lato",rec:"60\"",mat:"Corpo libero / disco",pct:"2kg",desc:"Side plank, ruotare il busto portando il braccio libero sotto il corpo e poi verso il soffitto.",note:"Aggiungere carico (2kg+) progressivamente.",link:"https://youtu.be/-ruAdV34H54"},
-    {id:uid(),nome:"Back Squat",zona:"Quadricipiti",fase:"Complementari",serie:4,rip:"8",rec:"90\"",mat:"Bilanciere",pct:"75%",desc:"Squat con bilanciere sulle spalle. Scendere fino a parallelismo mantenendo la schiena neutra.",note:"Core contratto, ginocchia in asse con i piedi.",link:"https://youtu.be/QcmonZUuumg"},
-    {id:uid(),nome:"BB Deadlift",zona:"Femorali",fase:"Complementari",serie:5,rip:"5",rec:"90\"",mat:"Bilanciere",pct:"80%",desc:"Stacco da terra con bilanciere. Posizione di forza con schiena neutra, spingere il suolo con i piedi.",note:"Non arrotondare la colonna. Esercizio avanzato.",link:"https://youtu.be/yPqv3ejnZvc"},
+    {id:uid(),nome:"Standing Calf Raise",zona:"Polpacci",fase:"Fondamentali",serie:3,rip:"10-25",rec:"30 sec",mat:"Corpo libero / macchina",pct:"50%",desc:"Sollevamento dei talloni in piedi. Salire sulle punte lentamente e scendere controllando.",note:"Ampiezza massima di movimento.",link:"https://youtu.be/g_E7_q1z2bo"},
+    {id:uid(),nome:"Turkish Get up",zona:"Addome",fase:"Complementari",serie:5,rip:"8+8",rec:"60 sec",mat:"Kettlebell",pct:"8kg",desc:"Movimento complesso dal suolo alla posizione eretta con kettlebell sopra la testa. Richiede coordinazione e stabilità.",note:"8kg o più. Eseguire lentamente, ogni fase deve essere controllata.",link:"https://youtu.be/-_zTytmHM94"},
+    {id:uid(),nome:"Side Plank Reach Through",zona:"Addome",fase:"Fondamentali",serie:3,rip:"5 per lato",rec:"60 sec",mat:"Corpo libero / disco",pct:"2kg",desc:"Side plank, ruotare il busto portando il braccio libero sotto il corpo e poi verso il soffitto.",note:"Aggiungere carico (2kg+) progressivamente.",link:"https://youtu.be/-ruAdV34H54"},
+    {id:uid(),nome:"Back Squat",zona:"Quadricipiti",fase:"Complementari",serie:4,rip:"8",rec:"90 sec",mat:"Bilanciere",pct:"75%",desc:"Squat con bilanciere sulle spalle. Scendere fino a parallelismo mantenendo la schiena neutra.",note:"Core contratto, ginocchia in asse con i piedi.",link:"https://youtu.be/QcmonZUuumg"},
+    {id:uid(),nome:"BB Deadlift",zona:"Femorali",fase:"Complementari",serie:5,rip:"5",rec:"90 sec",mat:"Bilanciere",pct:"80%",desc:"Stacco da terra con bilanciere. Posizione di forza con schiena neutra, spingere il suolo con i piedi.",note:"Non arrotondare la colonna. Esercizio avanzato.",link:"https://youtu.be/yPqv3ejnZvc"},
     {id:uid(),nome:"Bike recumbent (warm-up)",zona:"Cardio",fase:"Post-infortunio",serie:1,rip:"5 minuti",rec:"—",mat:"Cyclette / bike recumbent",pct:"40W",desc:"Pedalata su bike recumbent a bassa resistenza come attivazione cardiovascolare e articolare.",note:"40W in warm-up, 20W in scarico finale. Resistenza molto bassa.",link:""},
-    {id:uid(),nome:"Inclined DB pect fly",zona:"Petto",fase:"Fondamentali",serie:2,rip:"20",rec:'60"',mat:"Manubri",pct:"",desc:"Panca inclinata, aprire le braccia con gomiti leggermente flessi controllando la discesa. Risalire contraendo i pettorali.",note:"Controllo eccentrico fondamentale. Evitare apertura eccessiva in fase acuta.",link:"https://youtu.be/JSDpq14vCZ8"},
-    {id:uid(),nome:"Bench press DB",zona:"Petto",fase:"Complementari",serie:5,rip:"5",rec:'120"',mat:"Manubri",pct:"",desc:"Distensione su panca con manubri. Portare i manubri all'altezza del petto e spingere verticalmente.",note:"Traiettoria neutra. Presa salda.",link:"https://youtu.be/n8CskqpOPek"},
-    {id:uid(),nome:"Incline bend over barbell row",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"4",rec:'120"',mat:"Bilanciere",pct:"",desc:"Busto inclinato su panca, rematore con bilanciere verso l'addome. Focalizzarsi sulla retrazione scapolare.",note:"Non iperestendere il rachide. Movimento controllato.",link:"https://www.youtube.com/watch?v=2cGfXlLaJT0"},
-    {id:uid(),nome:"DB Shoulder press",zona:"Spalle",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Shoulder press con manubri seduto o in piedi. Spingere verticalmente senza estendere la colonna.",note:"Evitare anteposizione della testa. Scapole stabili.",link:"https://youtu.be/TsduLWuhlFM"},
-    {id:uid(),nome:"Military press",zona:"Spalle",fase:"Complementari",serie:3,rip:"6",rec:'120"',mat:"Bilanciere",pct:"",desc:"Press bilanciere da seduto o in piedi, spingere il bilanciere verticalmente sopra la testa.",note:"Core contratto, non iperestendere la zona lombare.",link:"https://www.youtube.com/watch?v=p012eiVWRq0"},
-    {id:uid(),nome:"DB triceps kickback",zona:"Tricipiti",fase:"Fondamentali",serie:4,rip:"8",rec:'120"',mat:"Manubri",pct:"",desc:"Busto parallelo al suolo, estendere il gomito portando il manubrio posteriormente. Gomito fisso.",note:"Mantenere il gomito alto e stabile durante tutta l'esecuzione.",link:"https://www.youtube.com/watch?v=bTLivumVV-0"},
-    {id:uid(),nome:"DB Biceps curl",zona:"Bicipiti",fase:"Fondamentali",serie:4,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Curl con manubri, rotazione del polso durante la salita (supinazione). Gomiti fermi ai fianchi.",note:"Non usare l'inerzia del busto.",link:"https://youtu.be/XE_pHwbst04"},
-    {id:uid(),nome:"Sit up",zona:"Addome",fase:"Fondamentali",serie:3,rip:"30",rec:'60"',mat:"Corpo libero",pct:"",desc:"Sit up classico. Partenza supina con ginocchia flesse, portare il busto verso le cosce.",note:"Movimento controllato. Non tirare il collo con le mani.",link:"https://youtu.be/uGePJVHZI5k"},
-    {id:uid(),nome:"Inverted Crunch",zona:"Addome",fase:"Fondamentali",serie:3,rip:"20",rec:'60"',mat:"Corpo libero",pct:"",desc:"Crunch inverso: supino con gambe sollevate, portare le ginocchia verso il petto sollevando il bacino.",note:"Movimento lento e controllato. Focus sulla zona addominale bassa.",link:"https://youtu.be/tYmVaG_S0hE"},
-    {id:uid(),nome:"Russian Twist",zona:"Addome",fase:"Fondamentali",serie:3,rip:"20",rec:'30"',mat:"Corpo libero / peso",pct:"",desc:"Seduto con busto inclinato a 45 gradi, ruotare il busto da un lato all'altro portando le mani lateralmente.",note:"Movimento rotatorio controllato. Piedi sollevati per aumentare l'intensita.",link:"https://youtu.be/wkD8rjkodUI"},
+    {id:uid(),nome:"Inclined DB pect fly",zona:"Petto",fase:"Fondamentali",serie:2,rip:"20",rec:"60 sec",mat:"Manubri",pct:"",desc:"Panca inclinata, aprire le braccia con gomiti leggermente flessi controllando la discesa. Risalire contraendo i pettorali.",note:"Controllo eccentrico fondamentale. Evitare apertura eccessiva in fase acuta.",link:"https://youtu.be/JSDpq14vCZ8"},
+    {id:uid(),nome:"Bench press DB",zona:"Petto",fase:"Complementari",serie:5,rip:"5",rec:"120 sec",mat:"Manubri",pct:"",desc:"Distensione su panca con manubri. Portare i manubri all'altezza del petto e spingere verticalmente.",note:"Traiettoria neutra. Presa salda.",link:"https://youtu.be/n8CskqpOPek"},
+    {id:uid(),nome:"Incline bend over barbell row",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"4",rec:"120 sec",mat:"Bilanciere",pct:"",desc:"Busto inclinato su panca, rematore con bilanciere verso l'addome. Focalizzarsi sulla retrazione scapolare.",note:"Non iperestendere il rachide. Movimento controllato.",link:"https://www.youtube.com/watch?v=2cGfXlLaJT0"},
+    {id:uid(),nome:"DB Shoulder press",zona:"Spalle",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"Manubri",pct:"",desc:"Shoulder press con manubri seduto o in piedi. Spingere verticalmente senza estendere la colonna.",note:"Evitare anteposizione della testa. Scapole stabili.",link:"https://youtu.be/TsduLWuhlFM"},
+    {id:uid(),nome:"Military press",zona:"Spalle",fase:"Complementari",serie:3,rip:"6",rec:"120 sec",mat:"Bilanciere",pct:"",desc:"Press bilanciere da seduto o in piedi, spingere il bilanciere verticalmente sopra la testa.",note:"Core contratto, non iperestendere la zona lombare.",link:"https://www.youtube.com/watch?v=p012eiVWRq0"},
+    {id:uid(),nome:"DB triceps kickback",zona:"Tricipiti",fase:"Fondamentali",serie:4,rip:"8",rec:"120 sec",mat:"Manubri",pct:"",desc:"Busto parallelo al suolo, estendere il gomito portando il manubrio posteriormente. Gomito fisso.",note:"Mantenere il gomito alto e stabile durante tutta l'esecuzione.",link:"https://www.youtube.com/watch?v=bTLivumVV-0"},
+    {id:uid(),nome:"DB Biceps curl",zona:"Bicipiti",fase:"Fondamentali",serie:4,rip:"12",rec:"60 sec",mat:"Manubri",pct:"",desc:"Curl con manubri, rotazione del polso durante la salita (supinazione). Gomiti fermi ai fianchi.",note:"Non usare l'inerzia del busto.",link:"https://youtu.be/XE_pHwbst04"},
+    {id:uid(),nome:"Sit up",zona:"Addome",fase:"Fondamentali",serie:3,rip:"30",rec:"60 sec",mat:"Corpo libero",pct:"",desc:"Sit up classico. Partenza supina con ginocchia flesse, portare il busto verso le cosce.",note:"Movimento controllato. Non tirare il collo con le mani.",link:"https://youtu.be/uGePJVHZI5k"},
+    {id:uid(),nome:"Inverted Crunch",zona:"Addome",fase:"Fondamentali",serie:3,rip:"20",rec:"60 sec",mat:"Corpo libero",pct:"",desc:"Crunch inverso: supino con gambe sollevate, portare le ginocchia verso il petto sollevando il bacino.",note:"Movimento lento e controllato. Focus sulla zona addominale bassa.",link:"https://youtu.be/tYmVaG_S0hE"},
+    {id:uid(),nome:"Russian Twist",zona:"Addome",fase:"Fondamentali",serie:3,rip:"20",rec:"30 sec",mat:"Corpo libero / peso",pct:"",desc:"Seduto con busto inclinato a 45 gradi, ruotare il busto da un lato all'altro portando le mani lateralmente.",note:"Movimento rotatorio controllato. Piedi sollevati per aumentare l'intensita.",link:"https://youtu.be/wkD8rjkodUI"},
     {id:uid(),nome:"Leg Swing (warm-up)",zona:"Anca",fase:"Post-infortunio",serie:1,rip:"2 minuti",rec:"—",mat:"Corpo libero",pct:"",desc:"Oscillazioni della gamba in avanti e indietro e lateralmente. Warm-up per anca e ischio-crurali.",note:"Eseguire con appoggio. Ampiezza progressiva.",link:"https://youtu.be/OB0GjxpPGS0"},
-    {id:uid(),nome:"TRX Squat + Overhead press",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"10",rec:'60"',mat:"TRX",pct:"",desc:"Squat al TRX con spinta delle braccia verso l'alto nella fase di risalita. Esercizio combinato.",note:"Coordinare il movimento di arti inferiori e superiori.",link:"https://www.youtube.com/watch?v=8VMN6ReT0yU"},
-    {id:uid(),nome:"DB alternate Forward Lunges",zona:"Affondi",fase:"Fondamentali",serie:2,rip:"10+10",rec:'60"',mat:"Manubri",pct:"50%",desc:"Affondi alternati in avanti con manubri. Passo ampio, ginocchio anteriore non oltre la punta del piede.",note:"Busto eretto durante tutto il movimento.",link:"https://youtu.be/t7DBjlOTwAk"},
+    {id:uid(),nome:"TRX Squat + Overhead press",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"10",rec:"60 sec",mat:"TRX",pct:"",desc:"Squat al TRX con spinta delle braccia verso l'alto nella fase di risalita. Esercizio combinato.",note:"Coordinare il movimento di arti inferiori e superiori.",link:"https://www.youtube.com/watch?v=8VMN6ReT0yU"},
+    {id:uid(),nome:"DB alternate Forward Lunges",zona:"Affondi",fase:"Fondamentali",serie:2,rip:"10+10",rec:"60 sec",mat:"Manubri",pct:"50%",desc:"Affondi alternati in avanti con manubri. Passo ampio, ginocchio anteriore non oltre la punta del piede.",note:"Busto eretto durante tutto il movimento.",link:"https://youtu.be/t7DBjlOTwAk"},
     {id:uid(),nome:"Lat machine (wide grip)",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"fino a cedimento",rec:"—",mat:"Macchina / cavi",pct:"",desc:"Lat machine con presa larga, tirare verso il petto contraendo i dorsali. Busto leggermente inclinato indietro.",note:"Eseguire fino a esaurimento (sfinimento). Controllare il rilascio.",link:"https://youtu.be/7JnP8dFbS14"},
-    {id:uid(),nome:"Triceps pushdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:'30"',mat:"Cavi",pct:"50%",desc:"Estensione tricipiti ai cavi alti. Gomiti fissi ai fianchi, spingere verso il basso fino a completa estensione.",note:"Controllare la fase eccentrica.",link:"https://youtu.be/LXkCrxn3caQ"},
-    {id:uid(),nome:"Seated close grip cable row",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Cavi",pct:"50%",desc:"Rematore seduto ai cavi con presa stretta. Tirare verso l'ombelico retraendo le scapole.",note:"Non iperestendere la colonna in trazione.",link:"https://youtu.be/SLOtxuaStoQ"},
-    {id:uid(),nome:"Pull over machine",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:'45"',mat:"Macchina",pct:"50%",desc:"Pullover alla macchina. Partire con le braccia in alto, portarle verso il basso contraendo dorsali e gran dentato.",note:"Ottimo per mobilita della spalla.",link:"https://youtu.be/zpCCC0iCvdI"},
-    {id:uid(),nome:"Cable biceps curls",zona:"Bicipiti",fase:"Fondamentali",serie:4,rip:"8",rec:'60"',mat:"Cavi",pct:"65%",desc:"Curl bicipiti ai cavi bassi. Tensione costante durante tutto il movimento.",note:"Mantenere i gomiti fermi.",link:"https://youtu.be/rfRdD5PKrko"},
-    {id:uid(),nome:"Croci ai cavi bassi",zona:"Petto",fase:"Fondamentali",serie:4,rip:"12",rec:'60"',mat:"Cavi",pct:"50%",desc:"Croci con cavi dal basso verso l'alto. Incrociare le mani al centro all'altezza del petto contraendo i pettorali.",note:"Arco del movimento controllato.",link:"https://www.youtube.com/watch?v=jzKDCuJVLjo"},
-    {id:uid(),nome:"Cable Pull down",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:'60"',mat:"Cavi",pct:"40%",desc:"Pulldown ai cavi. Tirare verso il basso con le braccia estese, attivando i dorsali senza flettere i gomiti.",note:"Movimento ampio e controllato.",link:"https://youtu.be/vvvNma1AVf0"},
-    {id:uid(),nome:"Barbell Rollout",zona:"Addome",fase:"Complementari",serie:4,rip:"8",rec:'60"',mat:"Bilanciere",pct:"BW",desc:"In ginocchio, far scorrere il bilanciere in avanti mantenendo il core contratto. Tornare lentamente.",note:"Non lasciare cedere la zona lombare. Progressione avanzata.",link:"https://youtu.be/3C1TRMJveXo"},
-    {id:uid(),nome:"Adductor machine",zona:"Adduttori/Abduttori",fase:"Post-infortunio",serie:2,rip:"15-20",rec:'45"',mat:"Macchina",pct:"",desc:"Adduzione dell'anca alla macchina verso l'interno. Rinforzo degli adduttori.",note:"Non chiudere troppo velocemente. ROM controllato.",link:"https://www.youtube.com/watch?v=V7YHfRT2PLE"},
-    {id:uid(),nome:"Chest press (macchina)",zona:"Petto",fase:"Fondamentali",serie:4,rip:"12-15",rec:'30-45"',mat:"Macchina",pct:"",desc:"Distensione su macchina chest press. Spingere orizzontalmente controllando sia la spinta che il ritorno.",note:"Ritorno lento (eccentrica 3 sec).",link:"https://youtu.be/n1Dyy3De1Rc"},
-    {id:uid(),nome:"Pectoral Machine",zona:"Petto",fase:"Fondamentali",serie:3,rip:"12-15",rec:'30"',mat:"Macchina",pct:"",desc:"Aperture ai pettorali alla macchina. Chiudere le braccia davanti al petto contraendo i pettorali.",note:"ROM controllato, non aprire eccessivamente in soggetti con instabilita anteriore.",link:"https://www.youtube.com/watch?v=6dExVifvwR8"},
-    {id:uid(),nome:"Pulley Row",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:'60"',mat:"Cavi",pct:"",desc:"Rematore ai cavi seduto con presa neutra. Tirare verso l'ombelico, retrarre le scapole.",note:"Movimento controllato. Buona attivazione romboidei e trapezio medio.",link:"https://www.youtube.com/watch?v=r2cv4X8pJn8"},
-    {id:uid(),nome:"Arm extension (cavi)",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"10",rec:'60"',mat:"Cavi",pct:"",desc:"Estensione tricipiti ai cavi. Gomiti fissi vicino alla testa, estendere le braccia.",note:"Controllare la fase eccentrica.",link:"https://youtu.be/ZgwlfnvmPFk"},
-    {id:uid(),nome:"Arm curl (manubri)",zona:"Bicipiti",fase:"Fondamentali",serie:3,rip:"15",rec:'45"',mat:"Manubri",pct:"",desc:"Curl bicipiti con manubri. Gomiti fermi, supinare il polso nella fase concentrica.",note:"Movimento pulito, non usare l'inerzia.",link:"https://youtu.be/ZgwlfnvmPFk"},
-    {id:uid(),nome:"Cable rope pulldown",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"10",rec:'60"',mat:"Cavi",pct:"",desc:"Pulldown con corda ai cavi. Tirare verso il collo aprendo le mani lateralmente. Attiva il dorsale largo.",note:"Movimento controllato, busto stabile.",link:""},
-    {id:uid(),nome:"ABD Crunch",zona:"Addome",fase:"Post-infortunio",serie:3,rip:"15",rec:'60"',mat:"Macchina / cavi",pct:"",desc:"Crunch alla macchina o ai cavi. Flettere il busto verso le ginocchia contro resistenza.",note:"Controllo nella fase eccentrica. Respirazione corretta.",link:"https://youtu.be/qWtYjH0enBA"},
-    {id:uid(),nome:"Front Squat Smith machine",zona:"Quadricipiti",fase:"Complementari",serie:4,rip:"8",rec:'60"',mat:"Smith machine",pct:"65%",desc:"Front squat allo Smith machine. Bilanciere sulle spalle anteriori, squat profondo mantenendo busto eretto.",note:"Smith machine per sicurezza e controllo traiettoria.",link:"https://youtu.be/DIrbREWqofE"},
-    {id:uid(),nome:"Sissy Squat",zona:"Quadricipiti",fase:"Complementari",serie:3,rip:"12",rec:'60"',mat:"Corpo libero",pct:"BW",desc:"Squat a corpo libero con forte inclinazione posteriore del busto e flessione plantare. Intenso per il quadricipite.",note:"Progressione avanzata, non indicato in fase acuta.",link:"https://www.youtube.com/watch?v=VUiFlZ2FsKA"},
-    {id:uid(),nome:"Walking lunges",zona:"Affondi",fase:"Complementari",serie:4,rip:"10",rec:'30"',mat:"Corpo libero",pct:"50%",desc:"Affondi camminati. Passo ampio in avanti, abbassare il ginocchio posteriore verso terra e continuare alternando.",note:"Busto eretto, coordinazione e equilibrio.",link:"https://youtu.be/DlhojghkaQ0"},
-    {id:uid(),nome:"DB Split squat",zona:"Affondi",fase:"Complementari",serie:4,rip:"6+6",rec:'60"',mat:"Manubri",pct:"50%",desc:"Split squat con manubri, piede posteriore su rialzo. Scendere verticalmente.",note:"Eccellente per forza monopodalica e stabilita.",link:"https://youtu.be/Wcmg-3iHwjQ"},
-    {id:uid(),nome:"Seated Calf Raise",zona:"Polpacci",fase:"Fondamentali",serie:3,rip:"15",rec:'60"',mat:"Macchina",pct:"50%",desc:"Calf raise da seduto, carico sulle cosce. Attiva prevalentemente il soleo rispetto al gemello.",note:"Utile post-lesioni al tendine d'Achille.",link:"https://youtu.be/HSGjUouQZCQ"},
+    {id:uid(),nome:"Triceps pushdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:"30 sec",mat:"Cavi",pct:"50%",desc:"Estensione tricipiti ai cavi alti. Gomiti fissi ai fianchi, spingere verso il basso fino a completa estensione.",note:"Controllare la fase eccentrica.",link:"https://youtu.be/LXkCrxn3caQ"},
+    {id:uid(),nome:"Seated close grip cable row",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"Cavi",pct:"50%",desc:"Rematore seduto ai cavi con presa stretta. Tirare verso l'ombelico retraendo le scapole.",note:"Non iperestendere la colonna in trazione.",link:"https://youtu.be/SLOtxuaStoQ"},
+    {id:uid(),nome:"Pull over machine",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:"45 sec",mat:"Macchina",pct:"50%",desc:"Pullover alla macchina. Partire con le braccia in alto, portarle verso il basso contraendo dorsali e gran dentato.",note:"Ottimo per mobilita della spalla.",link:"https://youtu.be/zpCCC0iCvdI"},
+    {id:uid(),nome:"Cable biceps curls",zona:"Bicipiti",fase:"Fondamentali",serie:4,rip:"8",rec:"60 sec",mat:"Cavi",pct:"65%",desc:"Curl bicipiti ai cavi bassi. Tensione costante durante tutto il movimento.",note:"Mantenere i gomiti fermi.",link:"https://youtu.be/rfRdD5PKrko"},
+    {id:uid(),nome:"Croci ai cavi bassi",zona:"Petto",fase:"Fondamentali",serie:4,rip:"12",rec:"60 sec",mat:"Cavi",pct:"50%",desc:"Croci con cavi dal basso verso l'alto. Incrociare le mani al centro all'altezza del petto contraendo i pettorali.",note:"Arco del movimento controllato.",link:"https://www.youtube.com/watch?v=jzKDCuJVLjo"},
+    {id:uid(),nome:"Cable Pull down",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:"60 sec",mat:"Cavi",pct:"40%",desc:"Pulldown ai cavi. Tirare verso il basso con le braccia estese, attivando i dorsali senza flettere i gomiti.",note:"Movimento ampio e controllato.",link:"https://youtu.be/vvvNma1AVf0"},
+    {id:uid(),nome:"Barbell Rollout",zona:"Addome",fase:"Complementari",serie:4,rip:"8",rec:"60 sec",mat:"Bilanciere",pct:"BW",desc:"In ginocchio, far scorrere il bilanciere in avanti mantenendo il core contratto. Tornare lentamente.",note:"Non lasciare cedere la zona lombare. Progressione avanzata.",link:"https://youtu.be/3C1TRMJveXo"},
+    {id:uid(),nome:"Adductor machine",zona:"Adduttori/Abduttori",fase:"Post-infortunio",serie:2,rip:"15-20",rec:"45 sec",mat:"Macchina",pct:"",desc:"Adduzione dell'anca alla macchina verso l'interno. Rinforzo degli adduttori.",note:"Non chiudere troppo velocemente. ROM controllato.",link:"https://www.youtube.com/watch?v=V7YHfRT2PLE"},
+    {id:uid(),nome:"Chest press (macchina)",zona:"Petto",fase:"Fondamentali",serie:4,rip:"12-15",rec:"30-45 sec",mat:"Macchina",pct:"",desc:"Distensione su macchina chest press. Spingere orizzontalmente controllando sia la spinta che il ritorno.",note:"Ritorno lento (eccentrica 3 sec).",link:"https://youtu.be/n1Dyy3De1Rc"},
+    {id:uid(),nome:"Pectoral Machine",zona:"Petto",fase:"Fondamentali",serie:3,rip:"12-15",rec:"30 sec",mat:"Macchina",pct:"",desc:"Aperture ai pettorali alla macchina. Chiudere le braccia davanti al petto contraendo i pettorali.",note:"ROM controllato, non aprire eccessivamente in soggetti con instabilita anteriore.",link:"https://www.youtube.com/watch?v=6dExVifvwR8"},
+    {id:uid(),nome:"Pulley Row",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:"60 sec",mat:"Cavi",pct:"",desc:"Rematore ai cavi seduto con presa neutra. Tirare verso l'ombelico, retrarre le scapole.",note:"Movimento controllato. Buona attivazione romboidei e trapezio medio.",link:"https://www.youtube.com/watch?v=r2cv4X8pJn8"},
+    {id:uid(),nome:"Arm extension (cavi)",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"10",rec:"60 sec",mat:"Cavi",pct:"",desc:"Estensione tricipiti ai cavi. Gomiti fissi vicino alla testa, estendere le braccia.",note:"Controllare la fase eccentrica.",link:"https://youtu.be/ZgwlfnvmPFk"},
+    {id:uid(),nome:"Arm curl (manubri)",zona:"Bicipiti",fase:"Fondamentali",serie:3,rip:"15",rec:"45 sec",mat:"Manubri",pct:"",desc:"Curl bicipiti con manubri. Gomiti fermi, supinare il polso nella fase concentrica.",note:"Movimento pulito, non usare l'inerzia.",link:"https://youtu.be/ZgwlfnvmPFk"},
+    {id:uid(),nome:"Cable rope pulldown",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"10",rec:"60 sec",mat:"Cavi",pct:"",desc:"Pulldown con corda ai cavi. Tirare verso il collo aprendo le mani lateralmente. Attiva il dorsale largo.",note:"Movimento controllato, busto stabile.",link:""},
+    {id:uid(),nome:"ABD Crunch",zona:"Addome",fase:"Post-infortunio",serie:3,rip:"15",rec:"60 sec",mat:"Macchina / cavi",pct:"",desc:"Crunch alla macchina o ai cavi. Flettere il busto verso le ginocchia contro resistenza.",note:"Controllo nella fase eccentrica. Respirazione corretta.",link:"https://youtu.be/qWtYjH0enBA"},
+    {id:uid(),nome:"Front Squat Smith machine",zona:"Quadricipiti",fase:"Complementari",serie:4,rip:"8",rec:"60 sec",mat:"Smith machine",pct:"65%",desc:"Front squat allo Smith machine. Bilanciere sulle spalle anteriori, squat profondo mantenendo busto eretto.",note:"Smith machine per sicurezza e controllo traiettoria.",link:"https://youtu.be/DIrbREWqofE"},
+    {id:uid(),nome:"Sissy Squat",zona:"Quadricipiti",fase:"Complementari",serie:3,rip:"12",rec:"60 sec",mat:"Corpo libero",pct:"BW",desc:"Squat a corpo libero con forte inclinazione posteriore del busto e flessione plantare. Intenso per il quadricipite.",note:"Progressione avanzata, non indicato in fase acuta.",link:"https://www.youtube.com/watch?v=VUiFlZ2FsKA"},
+    {id:uid(),nome:"Walking lunges",zona:"Affondi",fase:"Complementari",serie:4,rip:"10",rec:"30 sec",mat:"Corpo libero",pct:"50%",desc:"Affondi camminati. Passo ampio in avanti, abbassare il ginocchio posteriore verso terra e continuare alternando.",note:"Busto eretto, coordinazione e equilibrio.",link:"https://youtu.be/DlhojghkaQ0"},
+    {id:uid(),nome:"DB Split squat",zona:"Affondi",fase:"Complementari",serie:4,rip:"6+6",rec:"60 sec",mat:"Manubri",pct:"50%",desc:"Split squat con manubri, piede posteriore su rialzo. Scendere verticalmente.",note:"Eccellente per forza monopodalica e stabilita.",link:"https://youtu.be/Wcmg-3iHwjQ"},
+    {id:uid(),nome:"Seated Calf Raise",zona:"Polpacci",fase:"Fondamentali",serie:3,rip:"15",rec:"60 sec",mat:"Macchina",pct:"50%",desc:"Calf raise da seduto, carico sulle cosce. Attiva prevalentemente il soleo rispetto al gemello.",note:"Utile post-lesioni al tendine d'Achille.",link:"https://youtu.be/HSGjUouQZCQ"},
     {id:uid(),nome:"Quadruped Reach Through",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"10 per lato",rec:"—",mat:"Corpo libero",pct:"",desc:"Quadrupedica: portare un braccio sotto il corpo ruotando il rachide toracico, poi aprire verso il soffitto.",note:"Ottimo per mobilita toracica. Respirare nel movimento.",link:"https://youtu.be/f4EE_a_bVDE"},
-    {id:uid(),nome:"Floor press Manubri",zona:"Petto",fase:"Post-infortunio",serie:4,rip:"12",rec:'45"',mat:"Manubri",pct:"",desc:"Distensione con manubri a terra (floor press). ROM ridotto rispetto alla panca, minore stress sulla spalla.",note:"Esecuzione lenta. Ottimo per chi ha limitazioni alla spalla.",link:"https://youtu.be/nYa_rGWlBpk"},
-    {id:uid(),nome:"Press con elastico",zona:"Petto",fase:"Post-infortunio",serie:3,rip:"15",rec:'60"',mat:"Elastico",pct:"",desc:"Press orizzontale con elastico. Spingere in avanti partendo dal petto, controllare il ritorno.",note:"Focus sulla tecnica. Ideale in fase acuta per caricare senza sovraccaricare.",link:""},
-    {id:uid(),nome:"Tirata laterale elastico",zona:"Spalle",fase:"Post-infortunio",serie:2,rip:"20",rec:'45"',mat:"Elastico",pct:"",desc:"Tirata laterale con elastico per il deltoide medio. Andata lenta e controllata.",note:"Andata lenta. Ottimo esercizio di attivazione pre-allenamento.",link:""},
-    {id:uid(),nome:"Tricep Skullcrusher",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"8",rec:'60"',mat:"Bilanciere / manubri",pct:"",desc:"Disteso su panca, abbassare il bilanciere verso la fronte flettendo i gomiti. Estendere con forza.",note:"Ultima serie a cedimento. Gomiti fermi e orientati verso il soffitto.",link:""},
-    {id:uid(),nome:"Clean singolo con manubrio",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Clean monolaterale con manubrio. Partire dal basso con trazione esplosiva portando il manubrio alla spalla.",note:"Movimento balistico controllato. Buona coordinazione anca-spalla.",link:""},
-    {id:uid(),nome:"Rematore singolo elastico",zona:"Dorsali",fase:"Post-infortunio",serie:4,rip:"8",rec:'30"',mat:"Elastico",pct:"",desc:"Rematore monolaterale con elastico. Tirare il gomito posteriormente contraendo il dorsale.",note:"Stabilizzare il tronco. Movimento lento e controllato.",link:""},
-    {id:uid(),nome:'Row Manubrio (fermo 2")',zona:"Spalla",fase:"Fondamentali",serie:3,rip:"12",rec:'60"',mat:"Manubri",pct:"",desc:"Rematore con manubrio con pausa isometrica di 2 secondi nella posizione di massima contrazione.",note:"Fermo 2 secondi in apice. Aumenta il time under tension.",link:""},
-    {id:uid(),nome:"DB Pull overs",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:'45"',mat:"Manubri",pct:"",desc:"Disteso su panca, manubrio con entrambe le mani sopra il petto. Portare il manubrio oltre la testa ad arco e ritornare.",note:"Salita veloce. Ottimo per gran dentato e dorsale.",link:"https://youtu.be/-oXVlHotHP4"},
-    {id:uid(),nome:"DB Rear delt fly",zona:"Spalle",fase:"Fondamentali",serie:3,rip:"8",rec:'30"',mat:"Manubri",pct:"",desc:"Busto inclinato, aprire le braccia lateralmente con gomiti leggermente flessi per attivare il deltoide posteriore.",note:"Movimento controllato. Non usare l'inerzia del busto.",link:"https://youtu.be/3gJXpfwg_go"},
-    {id:uid(),nome:"DB Thruster",zona:"Spalle",fase:"Fondamentali",serie:5,rip:"6",rec:'60"',mat:"Manubri",pct:"",desc:"Squat + shoulder press in sequenza continua con manubri. Salire dallo squat e spingere i manubri sopra la testa.",note:"Esercizio metabolico complesso. Mantenere la schiena neutra in tutto il movimento.",link:"https://youtu.be/u3wKkZjE8QM"},
-    {id:uid(),nome:"Inchworm",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"15",rec:'60"',mat:"Corpo libero",pct:"",desc:"Da in piedi, scendere con le mani a terra e camminare con le mani fino a posizione plank, poi tornare.",note:"Ottimo esercizio di mobilita globale e attivazione core. Ginocchia tese.",link:"https://youtu.be/uwB_lmF3_R0"}
+    {id:uid(),nome:"Floor press Manubri",zona:"Petto",fase:"Post-infortunio",serie:4,rip:"12",rec:"45 sec",mat:"Manubri",pct:"",desc:"Distensione con manubri a terra (floor press). ROM ridotto rispetto alla panca, minore stress sulla spalla.",note:"Esecuzione lenta. Ottimo per chi ha limitazioni alla spalla.",link:"https://youtu.be/nYa_rGWlBpk"},
+    {id:uid(),nome:"Press con elastico",zona:"Petto",fase:"Post-infortunio",serie:3,rip:"15",rec:"60 sec",mat:"Elastico",pct:"",desc:"Press orizzontale con elastico. Spingere in avanti partendo dal petto, controllare il ritorno.",note:"Focus sulla tecnica. Ideale in fase acuta per caricare senza sovraccaricare.",link:""},
+    {id:uid(),nome:"Tirata laterale elastico",zona:"Spalle",fase:"Post-infortunio",serie:2,rip:"20",rec:"45 sec",mat:"Elastico",pct:"",desc:"Tirata laterale con elastico per il deltoide medio. Andata lenta e controllata.",note:"Andata lenta. Ottimo esercizio di attivazione pre-allenamento.",link:""},
+    {id:uid(),nome:"Tricep Skullcrusher",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"8",rec:"60 sec",mat:"Bilanciere / manubri",pct:"",desc:"Disteso su panca, abbassare il bilanciere verso la fronte flettendo i gomiti. Estendere con forza.",note:"Ultima serie a cedimento. Gomiti fermi e orientati verso il soffitto.",link:""},
+    {id:uid(),nome:"Clean singolo con manubrio",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"Manubri",pct:"",desc:"Clean monolaterale con manubrio. Partire dal basso con trazione esplosiva portando il manubrio alla spalla.",note:"Movimento balistico controllato. Buona coordinazione anca-spalla.",link:""},
+    {id:uid(),nome:"Rematore singolo elastico",zona:"Dorsali",fase:"Post-infortunio",serie:4,rip:"8",rec:"30 sec",mat:"Elastico",pct:"",desc:"Rematore monolaterale con elastico. Tirare il gomito posteriormente contraendo il dorsale.",note:"Stabilizzare il tronco. Movimento lento e controllato.",link:""},
+    {id:uid(),nome:'Row Manubrio (fermo 2")',zona:"Spalla",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"Manubri",pct:"",desc:"Rematore con manubrio con pausa isometrica di 2 secondi nella posizione di massima contrazione.",note:"Fermo 2 secondi in apice. Aumenta il time under tension.",link:""},
+    {id:uid(),nome:"DB Pull overs",zona:"Dorsali",fase:"Fondamentali",serie:3,rip:"15",rec:"45 sec",mat:"Manubri",pct:"",desc:"Disteso su panca, manubrio con entrambe le mani sopra il petto. Portare il manubrio oltre la testa ad arco e ritornare.",note:"Salita veloce. Ottimo per gran dentato e dorsale.",link:"https://youtu.be/-oXVlHotHP4"},
+    {id:uid(),nome:"DB Rear delt fly",zona:"Spalle",fase:"Fondamentali",serie:3,rip:"8",rec:"30 sec",mat:"Manubri",pct:"",desc:"Busto inclinato, aprire le braccia lateralmente con gomiti leggermente flessi per attivare il deltoide posteriore.",note:"Movimento controllato. Non usare l'inerzia del busto.",link:"https://youtu.be/3gJXpfwg_go"},
+    {id:uid(),nome:"DB Thruster",zona:"Spalle",fase:"Fondamentali",serie:5,rip:"6",rec:"60 sec",mat:"Manubri",pct:"",desc:"Squat + shoulder press in sequenza continua con manubri. Salire dallo squat e spingere i manubri sopra la testa.",note:"Esercizio metabolico complesso. Mantenere la schiena neutra in tutto il movimento.",link:"https://youtu.be/u3wKkZjE8QM"},
+    {id:uid(),nome:"Inchworm",zona:"Mobilità",fase:"Post-infortunio",serie:3,rip:"15",rec:"60 sec",mat:"Corpo libero",pct:"",desc:"Da in piedi, scendere con le mani a terra e camminare con le mani fino a posizione plank, poi tornare.",note:"Ottimo esercizio di mobilita globale e attivazione core. Ginocchia tese.",link:"https://youtu.be/uwB_lmF3_R0"}
   ,
-    {id:uid(),nome:"Wide Grip Seated Cable Low Row",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"8",rec:"120\"",mat:"Cavi",pct:"",desc:"Seduto al cavo basso con presa larga, tirare verso l\'ombelico retraendo le scapole. Busto stabile, non iperestendere.",note:"Focalizzarsi sulla retrazione scapolare. Fase eccentrica controllata.",link:"https://www.youtube.com/watch?v=sjJ0z4R3w0M"},
-    {id:uid(),nome:"Pull down singolo lat machine",zona:"Dorsali",fase:"Complementari",serie:3,rip:"15",rec:"90\"",mat:"Macchina / cavi",pct:"",desc:"Pulldown monolaterale alla lat machine. Tirare verso il fianco con un braccio solo, massima contrazione del dorsale.",note:"Utile per correggere asimmetrie. Stabilizzare il busto con la mano libera.",link:"https://www.youtube.com/watch?v=VxKrEOQk_fI"},
-    {id:uid(),nome:"Close Grip Lat Pulldown",zona:"Dorsali",fase:"Complementari",serie:5,rip:"8",rec:"90\"",mat:"Cavi",pct:"",desc:"Lat pulldown con presa stretta e neutra. Tirare verso il petto contraendo dorsali e bicipiti. Busto leggermente inclinato.",note:"Presa stretta aumenta l\'attivazione del gran dorsale nella porzione inferiore.",link:"https://youtu.be/8hzVLzu-RJk"},
-    {id:uid(),nome:"Lawnmover",zona:"Dorsali",fase:"Post-infortunio",serie:3,rip:"12 per lato",rec:"60\"",mat:"Manubri",pct:"",desc:"Rematore monolaterale con manubrio simulando il gesto di avviare un motore. Busto inclinato, tirare il gomito verso l\'alto e indietro.",note:"Eccellente per dorsale e romboidei. Rotazione controllata del busto.",link:"https://www.youtube.com/watch?v=K1BxgntZfo4"},
-    {id:uid(),nome:"Arnold press",zona:"Petto",fase:"Fondamentali",serie:3,rip:"10",rec:"60\"",mat:"Manubri",pct:"",desc:"Press con manubri con rotazione del polso: partire con palme verso di sé, ruotare verso l\'esterno durante la spinta verso l\'alto.",note:"Coinvolge tutte le porzioni del deltoide oltre al pettorale superiore. Movimento fluido.",link:"https://www.youtube.com/watch?v=ED730dlrt8s"},
-    {id:uid(),nome:"Push press T-band",zona:"Petto",fase:"Post-infortunio",serie:3,rip:"15",rec:"45\"",mat:"Elastico",pct:"",desc:"Press orizzontale con elastico a T. Spingere in avanti con entrambe le mani controllando il ritorno. Ottimo per attivazione in fase acuta.",note:"Carico progressivo con elastico. Ideale per recupero spalla.",link:"https://youtube.com/shorts/-0vuZoOd5ZI"},
-    {id:uid(),nome:"TRX Chest Fly",zona:"Petto",fase:"Fondamentali",serie:3,rip:"12",rec:"60\"",mat:"TRX",pct:"",desc:"Aperture al TRX: corpo inclinato in avanti, aprire le braccia lateralmente mantenendo i gomiti leggermente flessi, poi tornare.",note:"L\'inclinazione del corpo regola l\'intensità. Più orizzontale = più difficile.",link:"https://youtu.be/VeiB4nfSpeQ"},
-    {id:uid(),nome:"TRX Chest press",zona:"Petto",fase:"Fondamentali",serie:4,rip:"10",rec:"60\"",mat:"TRX",pct:"",desc:"Piegamenti al TRX con impugnatura delle cinghie. Corpo inclinato, flettere i gomiti abbassando il petto verso le mani e spingere.",note:"Ottimo per instabilità di spalla — richiede controllo scapolare. Varia intensità con l\'inclinazione.",link:"https://youtu.be/7VdE8LAFSWQ"},
-    {id:uid(),nome:"Lying Eccentric ER",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"45\"",mat:"Cavi",pct:"",desc:"Sdraiato su fianco, rotazione esterna eccentrica al cavo. Resistere lentamente al ritorno. Attiva i rotatori esterni in modalità eccentrica.",note:"Fondamentale per riabilitazione cuffia dei rotatori. Fase eccentrica 3-4 secondi.",link:"https://youtube.com/shorts/SQUuRqpFZ_w"},
-    {id:uid(),nome:"Windmill",zona:"Spalle",fase:"Complementari",serie:3,rip:"8 per lato",rec:"60\"",mat:"Manubri",pct:"",desc:"In piedi, un braccio teso verso l\'alto con manubrio, inclinarsi lateralmente portando la mano libera verso il piede. Controllo e mobilità.",note:"Esercizio avanzato di stabilità della spalla e mobilità laterale. Peso leggero.",link:"https://youtube.com/shorts/D7clkf7Jf9E"},
-    {id:uid(),nome:"TRX Y Raise",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"45\"",mat:"TRX",pct:"",desc:"Con il TRX corpo inclinato indietro, sollevare le braccia a Y sopra la testa. Attiva il trapezio inferiore e i rotatori esterni.",note:"Eccellente per instabilità di spalla e postura. Scapole depresse durante tutto il movimento.",link:"https://www.youtube.com/watch?v=eyFAJ8dGm7s"},
-    {id:uid(),nome:"Triceps TRX Pressdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:"60\"",mat:"TRX",pct:"",desc:"In piedi davanti al TRX, afferrare le cinghie e spingere verso il basso estendendo i gomiti. Corpo inclinato in avanti, gomiti fermi.",note:"Intensità regolabile con l\'inclinazione. Ottimo come alternativa ai cavi per i tricipiti.",link:"https://youtu.be/IObyCv1I97w"}
+    {id:uid(),nome:"Wide Grip Seated Cable Low Row",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"8",rec:"120 sec",mat:"Cavi",pct:"",desc:"Seduto al cavo basso con presa larga, tirare verso l\'ombelico retraendo le scapole. Busto stabile, non iperestendere.",note:"Focalizzarsi sulla retrazione scapolare. Fase eccentrica controllata.",link:"https://www.youtube.com/watch?v=sjJ0z4R3w0M"},
+    {id:uid(),nome:"Pull down singolo lat machine",zona:"Dorsali",fase:"Complementari",serie:3,rip:"15",rec:"90 sec",mat:"Macchina / cavi",pct:"",desc:"Pulldown monolaterale alla lat machine. Tirare verso il fianco con un braccio solo, massima contrazione del dorsale.",note:"Utile per correggere asimmetrie. Stabilizzare il busto con la mano libera.",link:"https://www.youtube.com/watch?v=VxKrEOQk_fI"},
+    {id:uid(),nome:"Close Grip Lat Pulldown",zona:"Dorsali",fase:"Complementari",serie:5,rip:"8",rec:"90 sec",mat:"Cavi",pct:"",desc:"Lat pulldown con presa stretta e neutra. Tirare verso il petto contraendo dorsali e bicipiti. Busto leggermente inclinato.",note:"Presa stretta aumenta l\'attivazione del gran dorsale nella porzione inferiore.",link:"https://youtu.be/8hzVLzu-RJk"},
+    {id:uid(),nome:"Lawnmover",zona:"Dorsali",fase:"Post-infortunio",serie:3,rip:"12 per lato",rec:"60 sec",mat:"Manubri",pct:"",desc:"Rematore monolaterale con manubrio simulando il gesto di avviare un motore. Busto inclinato, tirare il gomito verso l\'alto e indietro.",note:"Eccellente per dorsale e romboidei. Rotazione controllata del busto.",link:"https://www.youtube.com/watch?v=K1BxgntZfo4"},
+    {id:uid(),nome:"Arnold press",zona:"Petto",fase:"Fondamentali",serie:3,rip:"10",rec:"60 sec",mat:"Manubri",pct:"",desc:"Press con manubri con rotazione del polso: partire con palme verso di sé, ruotare verso l\'esterno durante la spinta verso l\'alto.",note:"Coinvolge tutte le porzioni del deltoide oltre al pettorale superiore. Movimento fluido.",link:"https://www.youtube.com/watch?v=ED730dlrt8s"},
+    {id:uid(),nome:"Push press T-band",zona:"Petto",fase:"Post-infortunio",serie:3,rip:"15",rec:"45 sec",mat:"Elastico",pct:"",desc:"Press orizzontale con elastico a T. Spingere in avanti con entrambe le mani controllando il ritorno. Ottimo per attivazione in fase acuta.",note:"Carico progressivo con elastico. Ideale per recupero spalla.",link:"https://youtube.com/shorts/-0vuZoOd5ZI"},
+    {id:uid(),nome:"TRX Chest Fly",zona:"Petto",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"TRX",pct:"",desc:"Aperture al TRX: corpo inclinato in avanti, aprire le braccia lateralmente mantenendo i gomiti leggermente flessi, poi tornare.",note:"L\'inclinazione del corpo regola l\'intensità. Più orizzontale = più difficile.",link:"https://youtu.be/VeiB4nfSpeQ"},
+    {id:uid(),nome:"TRX Chest press",zona:"Petto",fase:"Fondamentali",serie:4,rip:"10",rec:"60 sec",mat:"TRX",pct:"",desc:"Piegamenti al TRX con impugnatura delle cinghie. Corpo inclinato, flettere i gomiti abbassando il petto verso le mani e spingere.",note:"Ottimo per instabilità di spalla — richiede controllo scapolare. Varia intensità con l\'inclinazione.",link:"https://youtu.be/7VdE8LAFSWQ"},
+    {id:uid(),nome:"Lying Eccentric ER",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"45 sec",mat:"Cavi",pct:"",desc:"Sdraiato su fianco, rotazione esterna eccentrica al cavo. Resistere lentamente al ritorno. Attiva i rotatori esterni in modalità eccentrica.",note:"Fondamentale per riabilitazione cuffia dei rotatori. Fase eccentrica 3-4 secondi.",link:"https://youtube.com/shorts/SQUuRqpFZ_w"},
+    {id:uid(),nome:"Windmill",zona:"Spalle",fase:"Complementari",serie:3,rip:"8 per lato",rec:"60 sec",mat:"Manubri",pct:"",desc:"In piedi, un braccio teso verso l\'alto con manubrio, inclinarsi lateralmente portando la mano libera verso il piede. Controllo e mobilità.",note:"Esercizio avanzato di stabilità della spalla e mobilità laterale. Peso leggero.",link:"https://youtube.com/shorts/D7clkf7Jf9E"},
+    {id:uid(),nome:"TRX Y Raise",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"45 sec",mat:"TRX",pct:"",desc:"Con il TRX corpo inclinato indietro, sollevare le braccia a Y sopra la testa. Attiva il trapezio inferiore e i rotatori esterni.",note:"Eccellente per instabilità di spalla e postura. Scapole depresse durante tutto il movimento.",link:"https://www.youtube.com/watch?v=eyFAJ8dGm7s"},
+    {id:uid(),nome:"Triceps TRX Pressdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"TRX",pct:"",desc:"In piedi davanti al TRX, afferrare le cinghie e spingere verso il basso estendendo i gomiti. Corpo inclinato in avanti, gomiti fermi.",note:"Intensità regolabile con l\'inclinazione. Ottimo come alternativa ai cavi per i tricipiti.",link:"https://youtu.be/IObyCv1I97w"}
   ];
   saveAll();
 }
@@ -1145,12 +1160,22 @@ const DISTRETTI = {
   cardio:    ['Cardio','Warm-up'],
 };
 
+function updateZonaSpecifica() {
+  const distretto = document.getElementById('g-distretto').value;
+  const sel = document.getElementById('g-zona-specifica');
+  const zone = distretto ? (DISTRETTI[distretto]||[]) : Object.values(DISTRETTI).flat();
+  sel.innerHTML = '<option value="">Tutte le zone</option>' + zone.map(z=>`<option>${z}</option>`).join('');
+  renderPicker();
+}
+
 function renderPicker() {
   const distretto = document.getElementById('g-distretto')?.value || '';
+  const zonaSpec  = document.getElementById('g-zona-specifica')?.value || '';
   const fase      = document.getElementById('g-fase')?.value || '';
   const mat       = document.getElementById('g-mat')?.value || '';
   let opts = esercizi;
   if (distretto) opts = opts.filter(e => DISTRETTI[distretto]?.includes(e.zona));
+  if (zonaSpec)  opts = opts.filter(e => e.zona === zonaSpec);
   if (fase)      opts = opts.filter(e => !e.fase || e.fase === fase);
   if (mat)       opts = opts.filter(e => (e.mat||'').toLowerCase().includes(mat.toLowerCase()));
   document.getElementById('g-picker').innerHTML =
@@ -1628,12 +1653,24 @@ async function condividiScheda(id) {
 
 
 // ---- MODIFICA SCHEDA ----
+function updateModZonaSpecifica() {
+  const distretto = document.getElementById('mod-distretto').value;
+  const sel = document.getElementById('mod-zona-specifica');
+  const zone = distretto ? (DISTRETTI[distretto]||[]) : Object.values(DISTRETTI).flat();
+  sel.innerHTML = '<option value="">Tutte le zone</option>' + zone.map(z=>`<option>${z}</option>`).join('');
+  renderModPicker();
+}
+
 function renderModPicker() {
-  const dist = document.getElementById('mod-distretto')?.value || '';
-  const mat  = document.getElementById('mod-mat')?.value || '';
+  const dist     = document.getElementById('mod-distretto')?.value || '';
+  const zonaSpec = document.getElementById('mod-zona-specifica')?.value || '';
+  const fase     = document.getElementById('mod-fase-filter')?.value || '';
+  const mat      = document.getElementById('mod-mat')?.value || '';
   let opts = esercizi;
-  if (dist) opts = opts.filter(e => DISTRETTI[dist]?.includes(e.zona));
-  if (mat)  opts = opts.filter(e => (e.mat||'').toLowerCase().includes(mat.toLowerCase()));
+  if (dist)     opts = opts.filter(e => DISTRETTI[dist]?.includes(e.zona));
+  if (zonaSpec) opts = opts.filter(e => e.zona === zonaSpec);
+  if (fase)     opts = opts.filter(e => !e.fase || e.fase === fase);
+  if (mat)      opts = opts.filter(e => (e.mat||'').toLowerCase().includes(mat.toLowerCase()));
   document.getElementById('mod-picker').innerHTML =
     '<option value="">— scegli esercizio —</option>' +
     opts.map(e => '<option value="' + e.id + '">' + e.nome + ' [' + (e.zona||'') + ']</option>').join('');
@@ -1678,7 +1715,7 @@ function apriModifica(id) {
   // Popola picker modifica
   if (document.getElementById('mod-distretto'))
     document.getElementById('mod-distretto').value = '';
-  renderModPicker();
+  updateModZonaSpecifica();
 
   renderModGiornoTabs();
   renderModGiornoEditor();
@@ -1955,7 +1992,7 @@ if (savedSeedVersion !== SEED_VERSION) {
 
 document.getElementById('g-data').valueAsDate = new Date();
 renderEsercizi();
-renderPicker();
+updateZonaSpecifica();
 renderGiornoTabs();
 renderGiorniContainer();
 </script>
