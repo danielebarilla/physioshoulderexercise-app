@@ -76,6 +76,7 @@
     padding:9px 11px; font-size:14px; font-family:inherit;
     background:var(--gray50); transition:border .15s, box-shadow .15s;
   }
+  .field input, .field select, .field textarea { width:100%; }
   input:focus,select:focus,textarea:focus {
     outline:none; border-color:var(--honey); background:#fff;
     box-shadow:0 0 0 3px rgba(222,158,54,.18);
@@ -295,6 +296,13 @@
   </div>
   <div class="search-bar">
     <input type="text" id="search-esercizi" placeholder="Cerca per nome, zona, descrizione…" oninput="renderEsercizi()">
+    <select id="filter-distretto" onchange="renderEsercizi()" style="width:170px">
+      <option value="">Tutti i distretti</option>
+      <option value="superiore">Parte Superiore</option>
+      <option value="inferiore">Parte Inferiore</option>
+      <option value="core">Core</option>
+      <option value="cardio">Cardio</option>
+    </select>
     <select id="filter-zona" onchange="renderEsercizi()" style="width:190px">
       <option value="">Tutte le zone</option>
       <optgroup label="─ Parte Superiore ─">
@@ -376,18 +384,7 @@
         <div class="card-title" style="margin-bottom:14px">Dati paziente</div>
         <div class="form-grid">
           <div class="field full"><label>Nome paziente *</label><input id="g-nome" placeholder="Es. Mario Rossi"></div>
-          <div class="field"><label>Data</label><input id="g-data" type="date"></div>
-          <div class="field"><label>Zona target</label>
-            <input id="g-zona" type="text" placeholder="Es. Spalla destra, Ginocchio sx, Lombare…">
-          </div>
-          <div class="field"><label>Intensità</label>
-            <select id="g-fase" onchange="renderPicker()">
-              <option value="">— tutti i livelli —</option>
-              <option>Post-infortunio</option>
-              <option>Fondamentali</option>
-              <option>Complementari</option>
-            </select>
-          </div>
+          <div class="field full"><label>Data</label><input id="g-data" type="date"></div>
           <div class="field full"><label>Note generali per il paziente</label>
             <textarea id="g-note-generali" placeholder="Es. Eseguire gli esercizi a piedi scalzi su superficie piana. Riscaldarsi 5 minuti prima di iniziare…" style="min-height:72px"></textarea>
           </div>
@@ -481,7 +478,6 @@
         <button class="btn btn-honey" onclick="salvaScheda()">💾 Salva scheda</button>
         <button class="btn btn-primary" onclick="anteprimaScheda()">👁 Anteprima</button>
         <button class="btn btn-secondary" onclick="stampaScheda()">🖨 Stampa / PDF</button>
-        <button class="btn btn-secondary" onclick="condividiScheda(null)" style="background:#25D366;color:#fff;border-color:#25D366">📱 Condividi</button>
         <button class="btn btn-danger btn-sm" onclick="resetScheda()">↺ Reset</button>
       </div>
     </div>
@@ -840,6 +836,7 @@ function setFilterMat(mat) {
 
 function resetFiltri() {
   document.getElementById('search-esercizi').value = '';
+  document.getElementById('filter-distretto').value = '';
   document.getElementById('filter-zona').value = '';
   document.getElementById('filter-fase').value = '';
   document.getElementById('filter-mat').value = '';
@@ -847,14 +844,16 @@ function resetFiltri() {
 }
 
 function renderEsercizi() {
-  const q    = (document.getElementById('search-esercizi').value||'').toLowerCase();
+  const q         = (document.getElementById('search-esercizi').value||'').toLowerCase();
+  const distretto = document.getElementById('filter-distretto')?.value || '';
   const zona = document.getElementById('filter-zona').value;
   const fase = document.getElementById('filter-fase').value;
   const mat  = document.getElementById('filter-mat')?.value || '';
   let f = esercizi.filter(e => {
     const m = !q || e.nome.toLowerCase().includes(q)||(e.zona||'').toLowerCase().includes(q)||(e.desc||'').toLowerCase().includes(q);
     const matOk = !mat || (e.mat||'').toLowerCase().includes(mat.toLowerCase());
-    return m && (!zona||e.zona===zona) && (!fase||e.fase===fase) && matOk;
+    const distOk = !distretto || DISTRETTI[distretto]?.includes(e.zona);
+    return m && distOk && (!zona||e.zona===zona) && (!fase||e.fase===fase) && matOk;
   });
   document.getElementById('count-esercizi').textContent = esercizi.length + ' esercizi nel database';
   const el = document.getElementById('list-esercizi');
@@ -1010,6 +1009,12 @@ function renderGiorniContainer() {
             <div class="slot-param"><label>Rip./Tempo</label>
               <input type="text" value="${e._rip||''}" style="width:76px"
                 ${isActive?`onchange="upSlot(${g},${i},'_rip',this.value)"`:'readonly'}></div>
+            <div class="slot-param"><label>Intensità</label>
+              <input type="text" value="${e._pct!==undefined?e._pct:(e.pct||'')}" placeholder="es. 70%" style="width:64px"
+                ${isActive?`onchange="upSlot(${g},${i},'_pct',this.value)"`:'readonly'}></div>
+            <div class="slot-param"><label>Recupero</label>
+              <input type="text" value="${e._rec!==undefined?e._rec:(e.rec||'')}" placeholder="es. 60&quot;" style="width:64px"
+                ${isActive?`onchange="upSlot(${g},${i},'_rec',this.value)"`:'readonly'}></div>
             <div class="slot-param slot-note"><label>Nota spec.</label>
               <input type="text" value="${e._note||''}" placeholder="opzionale"
                 ${isActive?`onchange="upSlot(${g},${i},'_note',this.value)"`:'readonly'}></div>
@@ -1158,7 +1163,7 @@ function addEsercizioToScheda() {
   if (!id) return;
   const e = esercizi.find(x => x.id === id);
   if (!e) return;
-  giorni[giornoAttivo].esercizi.push({ ...e, _serie: e.serie, _rip: e.rip, _note: '' });
+  giorni[giornoAttivo].esercizi.push({ ...e, _serie: e.serie, _rip: e.rip, _pct: e.pct||'', _rec: e.rec||'', _note: '' });
   renderGiorniContainer();
 }
 
@@ -1184,8 +1189,6 @@ function resetScheda() {
 function buildSchedaHTML(inline) {
   const nome         = document.getElementById('g-nome').value.trim() || 'Paziente';
   const data         = document.getElementById('g-data').value;
-  const zona         = document.getElementById('g-zona').value;
-  const fase         = document.getElementById('g-fase').value;
   const noteGen      = document.getElementById('g-note-generali').value.trim();
   const obiettivi    = document.getElementById('g-obiettivi').value.trim();
   const dataStr      = data ? new Date(data).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT');
@@ -1198,7 +1201,6 @@ function buildSchedaHTML(inline) {
     + '<div>'
     + '<h2>Scheda di allenamento domiciliare</h2>'
     + '<div class="meta"><strong>Paziente:</strong> ' + nome + ' &nbsp;|&nbsp; <strong>Data:</strong> ' + dataStr + ' &nbsp;|&nbsp; <strong>Frequenza:</strong> ' + freqLabel + '</div>'
-    + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Intensità:</strong> ' + fase : '') + '</div>' : '')
     + '</div>'
     + logoTag
     + '</div>'
@@ -1233,8 +1235,8 @@ function buildSchedaHTML(inline) {
           <div class="esercizio-params">
             <div class="param-box"><div class="param-label">Serie</div><div class="param-val">${e._serie||e.serie||'—'}</div></div>
             <div class="param-box"><div class="param-label">Rip./Tempo</div><div class="param-val" style="font-size:11px">${e._rip||e.rip||'—'}</div></div>
-            <div class="param-box"><div class="param-label">Recupero</div><div class="param-val" style="font-size:11px">${e.rec||'—'}</div></div>
-            ${e.pct ? '<div class="param-box"><div class="param-label">Intensità</div><div class="param-val" style="font-size:11px;color:#92600a">'+e.pct+'</div></div>' : ''}
+            <div class="param-box"><div class="param-label">Recupero</div><div class="param-val" style="font-size:11px">${(e._rec!==undefined?e._rec:e.rec)||'—'}</div></div>
+            ${(e._pct!==undefined?e._pct:e.pct) ? '<div class="param-box"><div class="param-label">Intensità</div><div class="param-val" style="font-size:11px;color:#92600a">'+(e._pct!==undefined?e._pct:e.pct)+'</div></div>' : ''}
           </div>
         </div>`;
         const nota = (e._note || '') || e.note || '';
@@ -1248,7 +1250,7 @@ function buildSchedaHTML(inline) {
     <span style="font-weight:600;color:var(--honey)">Physio Shoulder</span>
   </div></div>`;
 
-  return { schedaHtml: out, meta: { nome, data: dataStr, zona, fase, freq: freqLabel, obiettivi, noteGen } };
+  return { schedaHtml: out, meta: { nome, data: dataStr, freq: freqLabel, obiettivi, noteGen } };
 }
 
 function anteprimaScheda() {
@@ -1284,8 +1286,8 @@ const PRINT_CSS = `
   .link-badge { display:inline-flex; align-items:center; gap:4px; background:#e8f0ef; border:1px solid #d2dfdd; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; color:#004640; text-decoration:none; margin-top:4px; margin-left:32px; }
   .scheda-footer { padding:14px 24px; font-size:11px; color:#5a6b68; background:#f7f8f8; border-top:1px solid #d2dfdd; display:flex; align-items:center; justify-content:space-between; }
   .note-generali-block { padding:12px 24px; background:#fffbeb; border-bottom:1px solid #f5c96a; }
-  .note-generali-block .label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#92600a; margin-bottom:4px; }
-  .note-generali-block .testo { font-size:13px; color:#78350f; line-height:1.6; }
+  .note-generali-block .label { font-weight:700; font-size:14px; color:#004640; display:flex; align-items:center; margin-bottom:4px; }
+  .note-generali-block .testo { font-size:12px; color:#5a6b68; line-height:1.5; white-space:pre-line; }
 `;
 
 
@@ -1458,7 +1460,7 @@ function renderSchede() {
               : '📅 '+s.data+' · '}
             ${s.zona||'area non specificata'} · ${totEserc} esercizi totali
             ${s.versioni && s.versioni.length
-              ? '<span class="badge badge-honey" style="margin-left:6px">'+s.versioni.length+' versione'+(s.versioni.length>1?'i':'')+'</span>'
+              ? '<span class="badge badge-honey" style="margin-left:6px">'+s.versioni.length+' version'+(s.versioni.length>1?'i':'e')+'</span>'
               : ''}
           </div>
         </div>
@@ -1466,8 +1468,6 @@ function renderSchede() {
           <button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">👁 Vedi</button>
           <button class="btn btn-primary btn-sm" onclick="apriModifica('${s.id}')">✏️ Modifica</button>
           <button class="btn btn-secondary btn-sm" onclick="printSaved('${s.id}')">🖨</button>
-          <button class="btn btn-sm" onclick="condividiScheda('${s.id}')" style="background:#25D366;color:#fff;border-color:#25D366;border:1.5px solid">📱</button>
-
           <button class="btn btn-danger btn-sm" onclick="delScheda('${s.id}')">🗑</button>
         </div>
       </div>
@@ -1545,12 +1545,11 @@ function getSchedaData(id) {
     return null;
   }
   const nome = document.getElementById('g-nome').value.trim() || 'Paziente';
-  const zona = document.getElementById('g-zona').value.trim() || '';
   const data = document.getElementById('g-data').value
     ? new Date(document.getElementById('g-data').value).toLocaleDateString('it-IT')
     : new Date().toLocaleDateString('it-IT');
   const risGSD = buildSchedaHTML(true);
-  return { html: risGSD.schedaHtml, nome, zona, data };
+  return { html: risGSD.schedaHtml, nome, data };
 }
 
 function buildHTMLFile(htmlContent, titolo) {
@@ -1774,6 +1773,18 @@ function renderModGiornoEditor() {
             style="width:76px;padding:4px 6px;font-size:13px">
         </div>
         <div class="slot-param">
+          <label style="font-size:9px;color:var(--gray600)">Intensità</label>
+          <input type="text" value="${e._pct!==undefined?e._pct:(e.pct||'')}" placeholder="es. 70%"
+            onchange="modUpSlot(${i},'_pct',this.value)"
+            style="width:64px;text-align:center;padding:4px 6px;font-size:13px">
+        </div>
+        <div class="slot-param">
+          <label style="font-size:9px;color:var(--gray600)">Recupero</label>
+          <input type="text" value="${e._rec!==undefined?e._rec:(e.rec||'')}" placeholder="es. 60&quot;"
+            onchange="modUpSlot(${i},'_rec',this.value)"
+            style="width:64px;text-align:center;padding:4px 6px;font-size:13px">
+        </div>
+        <div class="slot-param">
           <label style="font-size:9px;color:var(--gray600)">Nota spec.</label>
           <input type="text" value="${e._note||''}" placeholder="opzionale"
             onchange="modUpSlot(${i},'_note',this.value)"
@@ -1799,7 +1810,7 @@ function modAddEsercizio() {
   if (!id) return;
   const e = esercizi.find(x => x.id === id);
   if (!e) return;
-  modGiorni[modGiornoAttivo].esercizi.push({ ...e, _serie: e.serie, _rip: e.rip, _note: '' });
+  modGiorni[modGiornoAttivo].esercizi.push({ ...e, _serie: e.serie, _rip: e.rip, _pct: e.pct||'', _rec: e.rec||'', _note: '' });
   renderModGiornoEditor();
 }
 
@@ -1903,8 +1914,8 @@ function buildVersioneHTML(cfg) {
           <div class="esercizio-params">
             <div class="param-box"><div class="param-label">Serie</div><div class="param-val">${e._serie||e.serie||'—'}</div></div>
             <div class="param-box"><div class="param-label">Rip./Tempo</div><div class="param-val" style="font-size:11px">${e._rip||e.rip||'—'}</div></div>
-            <div class="param-box"><div class="param-label">Recupero</div><div class="param-val" style="font-size:11px">${e.rec||'—'}</div></div>
-            ${e.pct ? '<div class="param-box"><div class="param-label">Intensità</div><div class="param-val" style="font-size:11px;color:#92600a">'+e.pct+'</div></div>' : ''}
+            <div class="param-box"><div class="param-label">Recupero</div><div class="param-val" style="font-size:11px">${(e._rec!==undefined?e._rec:e.rec)||'—'}</div></div>
+            ${(e._pct!==undefined?e._pct:e.pct) ? '<div class="param-box"><div class="param-label">Intensità</div><div class="param-val" style="font-size:11px;color:#92600a">'+(e._pct!==undefined?e._pct:e.pct)+'</div></div>' : ''}
           </div>
         </div>`;
         const nota = (e._note||'') || e.note || '';
