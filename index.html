@@ -345,11 +345,10 @@
       <option>Macchina</option>
       <option>Kettlebell</option>
       <option>Smith machine</option>
-      <option>Pallone / Swiss ball</option>
-      <option>Gradino / step</option>
+      <option>Pallone / Fitball</option>
+      <option>Step</option>
       <option>Panca</option>
       <option>Cyclette / bike recumbent</option>
-      <option>Fitball</option>
       <option>Bastone</option>
     </select>
     <button class="btn btn-secondary btn-sm" onclick="resetFiltri()" title="Azzera tutti i filtri" style="flex-shrink:0">✕ Reset</button>
@@ -440,7 +439,7 @@
             </select>
           </div>
           <div class="field">
-            <label>Intensità</label>
+            <label>Livello</label>
             <select id="g-fase" onchange="renderPicker()">
               <option value="">Tutti i livelli</option>
               <option>Post-infortunio</option>
@@ -461,11 +460,10 @@
       <option>Macchina</option>
       <option>Kettlebell</option>
       <option>Smith machine</option>
-      <option>Pallone / Swiss ball</option>
-      <option>Gradino / step</option>
+      <option>Pallone / Fitball</option>
+      <option>Step</option>
       <option>Panca</option>
       <option>Cyclette / bike recumbent</option>
-      <option>Fitball</option>
       <option>Bastone</option>
             </select>
           </div>
@@ -558,15 +556,15 @@
           <option>Macchina</option>
           <option>Kettlebell</option>
           <option>Smith machine</option>
-          <option>Pallone / Swiss ball</option>
-          <option>Gradino / step</option>
+          <option>Pallone / Fitball</option>
+          <option>Step</option>
           <option>Panca</option>
           <option>Cyclette / bike recumbent</option>
           <option>Bastone</option>
           <option>Altro</option>
         </select>
       </div>
-      <div class="field"><label>% Massimale / Intensità</label><input id="e-pct" placeholder="Es. 60%  /  BW"></div>
+      <div class="field"><label>Intensità</label><input id="e-pct" placeholder="Es. 60%  /  BW"></div>
       <div class="field full"><label>Link video (YouTube)</label><input id="e-link" placeholder="https://youtu.be/…"></div>
       <div class="field full"><label>Descrizione / esecuzione</label><textarea id="e-desc" placeholder="Posizione di partenza, movimento, errori da evitare…"></textarea></div>
       <div class="field full"><label>Note per il paziente</label><textarea id="e-note" style="min-height:58px" placeholder="Es. Fermarsi se compare dolore. Non iperestendere il ginocchio."></textarea></div>
@@ -627,7 +625,7 @@
         <input id="mod-zona" type="text" placeholder="Es. Spalla destra, Ginocchio sx, Lombare…">
       </div>
       <div class="field">
-        <label>Intensità</label>
+        <label>Livello</label>
         <select id="mod-fase">
           <option value="">— tutti i livelli —</option>
           <option>Post-infortunio</option>
@@ -678,11 +676,10 @@
       <option>Macchina</option>
       <option>Kettlebell</option>
       <option>Smith machine</option>
-      <option>Pallone / Swiss ball</option>
-      <option>Gradino / step</option>
+      <option>Pallone / Fitball</option>
+      <option>Step</option>
       <option>Panca</option>
       <option>Cyclette / bike recumbent</option>
-      <option>Fitball</option>
       <option>Bastone</option>
         </select>
         <select id="mod-picker" style="flex:2;min-width:160px">
@@ -732,10 +729,10 @@ if (!esercizi) {
     {id:uid(),nome:"Australian pull up",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"8",rec:"90 sec",mat:"Corpo libero / sbarra",pct:"BW",desc:"Rematore a corpo libero. Corpo inclinato, talloni a terra, tirare il petto verso la sbarra.",note:"Corpo rigido come una tavola. Intensità modulabile con l'inclinazione.",link:"https://www.youtube.com/watch?v=-nn7X16rDG8"},
     {id:uid(),nome:"Rear delt fly machine",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"10",rec:"30 sec",mat:"Macchina",pct:"50%",desc:"Aperture per deltoide posteriore alla macchina. Aprire le braccia lateralmente con gomiti leggermente flessi.",note:"Focus sulla retrazione scapolare e deltoide posteriore.",link:"https://youtu.be/gh0g-BR1koA"},
     {id:uid(),nome:"Single arm DB Rows",zona:"Dorsali",fase:"Fondamentali",serie:5,rip:"8+8",rec:"60 sec",mat:"Manubri",pct:"60%",desc:"Rematore monolaterale con manubrio, ginocchio sul panchetto. Portare il manubrio verso l'anca contraendo il dorsale.",note:"Non ruotare il bacino.",link:"https://youtu.be/ZRSGpBUVcNw"},
-    {id:uid(),nome:"Wall squat (Swiss ball)",zona:"Quadricipiti",fase:"Post-infortunio",serie:2,rip:"20-28",rec:"90 sec",mat:"Pallone / Swiss ball",pct:"",desc:"Squat isometrico contro il muro con Swiss ball. Scendere fino a 90° e mantenere la posizione.",note:"Swiss ball per ridurre lo stress patello-femorale. Piedi leggermente in avanti.",link:"https://youtu.be/vujBdEdSj5M"},
+    {id:uid(),nome:"Wall squat (Swiss ball)",zona:"Quadricipiti",fase:"Post-infortunio",serie:2,rip:"20-28",rec:"90 sec",mat:"Pallone / Fitball",pct:"",desc:"Squat isometrico contro il muro con Swiss ball. Scendere fino a 90° e mantenere la posizione.",note:"Swiss ball per ridurre lo stress patello-femorale. Piedi leggermente in avanti.",link:"https://youtu.be/vujBdEdSj5M"},
     {id:uid(),nome:"Leg extension",zona:"Quadricipiti",fase:"Post-infortunio",serie:3,rip:"10",rec:"60 sec",mat:"Macchina",pct:"",desc:"Estensione del ginocchio alla macchina. Movimento controllato in entrambe le fasi.",note:"Evitare iperestensione finale. Utile per rinforzo del quadricipite isolato.",link:"https://www.youtube.com/watch?v=uBM6IoEiXwM"},
     {id:uid(),nome:"Seated leg curl",zona:"Femorali",fase:"Post-infortunio",serie:4,rip:"8-15",rec:"45-60 sec",mat:"Macchina",pct:"70%",desc:"Leg curl seduto. Flettere il ginocchio contro resistenza in modo controllato.",note:"Fase eccentrica lenta (3 secondi).",link:"https://youtu.be/UqeOB0jve20"},
-    {id:uid(),nome:"Steps up (gradino >30cm)",zona:"Affondi",fase:"Post-infortunio",serie:3,rip:"15 per lato",rec:"60 sec",mat:"Gradino / step",pct:"",desc:"Salire su un gradino alto almeno 30cm con una gamba sola. Controllare sia la salita che la discesa.",note:"Gradino circa 30cm. Busto eretto, ginocchio in allineamento con il piede.",link:"https://www.youtube.com/watch?v=X_oNQX4srHc"},
+    {id:uid(),nome:"Steps up (gradino >30cm)",zona:"Affondi",fase:"Post-infortunio",serie:3,rip:"15 per lato",rec:"60 sec",mat:"Step",pct:"",desc:"Salire su un gradino alto almeno 30cm con una gamba sola. Controllare sia la salita che la discesa.",note:"Gradino circa 30cm. Busto eretto, ginocchio in allineamento con il piede.",link:"https://www.youtube.com/watch?v=X_oNQX4srHc"},
     {id:uid(),nome:"TRX Leg Curl",zona:"Femorali",fase:"Fondamentali",serie:4,rip:"8",rec:"120 sec",mat:"TRX",pct:"",desc:"Supino con i talloni nel TRX, sollevare il bacino e flettere le ginocchia portando i talloni verso i glutei.",note:"Eccellente per rinforzo ischiocrurale funzionale. Progressione: monopodalico.",link:"https://www.youtube.com/watch?v=JcJ2i2gUW3o"},
     {id:uid(),nome:"Goblet Squat",zona:"Quadricipiti",fase:"Fondamentali",serie:3,rip:"15",rec:"90 sec",mat:"Kettlebell / manubrio",pct:"",desc:"Squat con kettlebell o manubrio tenuto al petto. Scendere mantenendo il busto eretto e le ginocchia in asse con i piedi.",note:"Ottimo per mobilità caviglia e controllo del ginocchio.",link:"https://youtu.be/6vjkqXk7th0"},
     {id:uid(),nome:"Hip Thrust single leg",zona:"Glutei",fase:"Fondamentali",serie:2,rip:"15+15",rec:"90 sec",mat:"Panca",pct:"",desc:"Hip thrust monopodalico con spalle sulla panca. Spingere il bacino verso l'alto contraendo il gluteo.",note:"Fondamentale per il rinforzo del grande gluteo. Allineamento anca-spalla.",link:"https://youtu.be/J3qfu-rQgus"},
@@ -811,7 +808,14 @@ if (!esercizi) {
     {id:uid(),nome:"Lying Eccentric ER",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"45 sec",mat:"Cavi",pct:"",desc:"Sdraiato su fianco, rotazione esterna eccentrica al cavo. Resistere lentamente al ritorno. Attiva i rotatori esterni in modalità eccentrica.",note:"Fondamentale per riabilitazione cuffia dei rotatori. Fase eccentrica 3-4 secondi.",link:"https://youtube.com/shorts/SQUuRqpFZ_w"},
     {id:uid(),nome:"Windmill",zona:"Spalle",fase:"Complementari",serie:3,rip:"8 per lato",rec:"60 sec",mat:"Manubri",pct:"",desc:"In piedi, un braccio teso verso l\'alto con manubrio, inclinarsi lateralmente portando la mano libera verso il piede. Controllo e mobilità.",note:"Esercizio avanzato di stabilità della spalla e mobilità laterale. Peso leggero.",link:"https://youtube.com/shorts/D7clkf7Jf9E"},
     {id:uid(),nome:"TRX Y Raise",zona:"Spalle",fase:"Post-infortunio",serie:3,rip:"15",rec:"45 sec",mat:"TRX",pct:"",desc:"Con il TRX corpo inclinato indietro, sollevare le braccia a Y sopra la testa. Attiva il trapezio inferiore e i rotatori esterni.",note:"Eccellente per instabilità di spalla e postura. Scapole depresse durante tutto il movimento.",link:"https://www.youtube.com/watch?v=eyFAJ8dGm7s"},
-    {id:uid(),nome:"Triceps TRX Pressdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"TRX",pct:"",desc:"In piedi davanti al TRX, afferrare le cinghie e spingere verso il basso estendendo i gomiti. Corpo inclinato in avanti, gomiti fermi.",note:"Intensità regolabile con l\'inclinazione. Ottimo come alternativa ai cavi per i tricipiti.",link:"https://youtu.be/IObyCv1I97w"}
+    {id:uid(),nome:"Triceps TRX Pressdown",zona:"Tricipiti",fase:"Fondamentali",serie:3,rip:"12",rec:"60 sec",mat:"TRX",pct:"",desc:"In piedi davanti al TRX, afferrare le cinghie e spingere verso il basso estendendo i gomiti. Corpo inclinato in avanti, gomiti fermi.",note:"Intensità regolabile con l\'inclinazione. Ottimo come alternativa ai cavi per i tricipiti.",link:"https://youtu.be/IObyCv1I97w"},
+    {id:uid(),nome:"Push up",zona:"Petto",fase:"Fondamentali",serie:4,rip:"10",rec:"90 sec",mat:"Corpo libero",pct:"BW",desc:"Piegamenti sulle braccia a corpo libero: mani leggermente più larghe delle spalle, scendere mantenendo il corpo rigido, poi spingere per risalire.",note:"Mantenere l'allineamento capo-bacino-caviglie durante tutto il movimento.",link:""},
+    {id:uid(),nome:"DB Deltoid lateral raise",zona:"Spalle",fase:"Fondamentali",serie:4,rip:"10",rec:"90 sec",mat:"Manubri",pct:"",desc:"In piedi con un manubrio per mano, sollevare le braccia lateralmente fino all'altezza delle spalle mantenendo un leggero gomito flesso.",note:"Evitare di usare lo slancio del busto. Movimento controllato in entrambe le fasi.",link:"https://youtu.be/4q-TZNT3eHU"},
+    {id:uid(),nome:"DB One-arm triceps extension",zona:"Tricipiti",fase:"Fondamentali",serie:4,rip:"10",rec:"60 sec",mat:"Manubri",pct:"",desc:"In piedi o seduto, estendere il gomito sopra la testa con un manubrio tenuto con un braccio solo, mantenendo il gomito fisso vicino all'orecchio.",note:"Gomito stabile durante tutta l'esecuzione. Non aprire lateralmente.",link:"https://www.youtube.com/watch?v=2jI4M0Dnq4c"},
+    {id:uid(),nome:"DB French press",zona:"Tricipiti",fase:"Fondamentali",serie:4,rip:"8",rec:"60 sec",mat:"Manubri",pct:"",desc:"Supino o seduto, estendere il gomito sopra la testa con un manubrio tenuto a due mani dietro la nuca.",note:"Gomiti stretti e stabili. Controllare la fase eccentrica.",link:"https://www.youtube.com/watch?v=vS_lKYyyWkA"},
+    {id:uid(),nome:"T-band pull down",zona:"Dorsali",fase:"Post-infortunio",serie:3,rip:"20",rec:"60 sec",mat:"Elastico",pct:"",desc:"Elastico ancorato in alto, tirare verso il basso con le braccia tese, attivando il grande dorsale.",note:"Buon esercizio di attivazione dorsale a basso carico. Utile in fase precoce.",link:"https://www.youtube.com/watch?v=X_E7iiSsklI"},
+    {id:uid(),nome:"TRX Australian pull up",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"10",rec:"90 sec",mat:"TRX",pct:"BW",desc:"Rematore a corpo libero con maniglie TRX. Corpo inclinato, talloni a terra, tirare il petto verso le maniglie.",note:"Variante TRX dell'Australian pull up: intensità regolabile modificando l'inclinazione del corpo.",link:"https://www.youtube.com/watch?v=QipbFifbi3E"},
+    {id:uid(),nome:"Landmine lateral single arm row",zona:"Dorsali",fase:"Fondamentali",serie:4,rip:"10",rec:"60 sec",mat:"Bilanciere (landmine)",pct:"",desc:"Bilanciere in landmine, rematore monolaterale tirando l'estremità verso il fianco mantenendo il busto stabile.",note:"Non ruotare il bacino durante la trazione. Controllo scapolare.",link:"https://youtu.be/zxTF93cxGes"}
   ];
   saveAll();
 }
@@ -873,7 +877,7 @@ function renderEsercizi() {
   document.getElementById('count-esercizi').textContent = esercizi.length + ' esercizi nel database';
   const el = document.getElementById('list-esercizi');
   if(!f.length) { el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Nessun esercizio trovato</p></div>'; return; }
-  el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Materiale</th><th>Zona</th><th>Serie × Rip.</th><th>Rec.</th><th>Intensità</th><th>%</th><th>Video</th><th style="width:80px"></th></tr></thead><tbody>'+
+  el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Materiale</th><th>Zona</th><th>Serie × Rip.</th><th>Rec.</th><th>Livello</th><th>Intensità</th><th>Video</th><th style="width:80px"></th></tr></thead><tbody>'+
     f.map(e=>`<tr>
       <td><strong>${e.nome}</strong>${e.desc?'<br><span style="font-size:11px;color:#5a6b68">'+e.desc.slice(0,70)+(e.desc.length>70?'…':'')+'</span>':''}</td>
       <td style="font-size:12px;cursor:pointer" onclick="setFilterMat('${e.mat||''}'" title="Filtra per questa attrezzatura">${e.mat||'—'}</td>
@@ -1918,7 +1922,7 @@ function buildVersioneHTML(cfg) {
     + '<div>'
     + '<h2>Scheda di allenamento domiciliare</h2>'
     + '<div class="meta"><strong>Paziente:</strong> ' + nome + ' &nbsp;|&nbsp; <strong>Data:</strong> ' + data + ' &nbsp;|&nbsp; <strong>Frequenza:</strong> ' + freqLabel + '</div>'
-    + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Intensità:</strong> ' + fase : '') + '</div>' : '')
+    + (zona ? '<div class="meta"><strong>Zona target:</strong> ' + zona + (fase ? ' &nbsp;|&nbsp; <strong>Livello:</strong> ' + fase : '') + '</div>' : '')
     + '</div>'
     + '<img src="' + LOGO + '" style="height:36px;opacity:.9" alt="Physio Shoulder">'
     + '</div>'
