@@ -1,7 +1,7 @@
 // FisioDB — Physio Shoulder — Service Worker
 // Cache-first per l'app shell, network passthrough per Supabase e altre API esterne.
 
-const CACHE_NAME = 'fisiodb-shell-v3';
+const CACHE_NAME = 'fisiodb-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',

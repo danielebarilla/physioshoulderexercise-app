@@ -379,8 +379,7 @@
       <option>Smith machine</option>
       <option>Pallone / Fitball</option>
       <option>Step</option>
-      <option>Panca</option>
-      <option>Cyclette / bike recumbent</option>
+      <option>Cyclette</option>
       <option>Bastone</option>
     </select>
     <button class="btn btn-secondary btn-sm" onclick="resetFiltri()" title="Azzera tutti i filtri" style="flex-shrink:0">✕ Reset</button>
@@ -494,8 +493,7 @@
       <option>Smith machine</option>
       <option>Pallone / Fitball</option>
       <option>Step</option>
-      <option>Panca</option>
-      <option>Cyclette / bike recumbent</option>
+      <option>Cyclette</option>
       <option>Bastone</option>
             </select>
           </div>
@@ -596,8 +594,7 @@
           <option>Smith machine</option>
           <option>Pallone / Fitball</option>
           <option>Step</option>
-          <option>Panca</option>
-          <option>Cyclette / bike recumbent</option>
+          <option>Cyclette</option>
           <option>Bastone</option>
           <option>Altro</option>
         </select>
@@ -716,8 +713,7 @@
       <option>Smith machine</option>
       <option>Pallone / Fitball</option>
       <option>Step</option>
-      <option>Panca</option>
-      <option>Cyclette / bike recumbent</option>
+      <option>Cyclette</option>
       <option>Bastone</option>
         </select>
         <select id="mod-picker" style="flex:2;min-width:160px">
@@ -787,7 +783,7 @@ function seedEsercizi() {
     {id:uid(),nome:"Side Plank Reach Through",zona:"Addome",fase:"Performance",serie:3,rip:"5 per lato",rec:"60 sec",mat:"Corpo libero / disco",pct:"2kg",desc:"Side plank, ruotare il busto portando il braccio libero sotto il corpo e poi verso il soffitto.",note:"Aggiungere carico (2kg+) progressivamente.",link:"https://youtu.be/-ruAdV34H54"},
     {id:uid(),nome:"Back Squat",zona:"Quadricipiti",fase:"Forza resistiva",serie:4,rip:"8",rec:"90 sec",mat:"Bilanciere",pct:"75%",desc:"Squat con bilanciere sulle spalle. Scendere fino a parallelismo mantenendo la schiena neutra.",note:"Core contratto, ginocchia in asse con i piedi.",link:"https://youtu.be/QcmonZUuumg"},
     {id:uid(),nome:"BB Deadlift",zona:"Femorali",fase:"Forza resistiva",serie:5,rip:"5",rec:"90 sec",mat:"Bilanciere",pct:"80%",desc:"Stacco da terra con bilanciere. Posizione di forza con schiena neutra, spingere il suolo con i piedi.",note:"Non arrotondare la colonna. Esercizio avanzato.",link:"https://youtu.be/yPqv3ejnZvc"},
-    {id:uid(),nome:"Bike recumbent (warm-up)",zona:"Cardio",fase:"Post-infortunio",serie:1,rip:"5 minuti",rec:"—",mat:"Cyclette / bike recumbent",pct:"40W",desc:"Pedalata su bike recumbent a bassa resistenza come attivazione cardiovascolare e articolare.",note:"40W in warm-up, 20W in scarico finale. Resistenza molto bassa.",link:""},
+    {id:uid(),nome:"Bike recumbent (warm-up)",zona:"Cardio",fase:"Post-infortunio",serie:1,rip:"5 minuti",rec:"—",mat:"Cyclette",pct:"40W",desc:"Pedalata su bike recumbent a bassa resistenza come attivazione cardiovascolare e articolare.",note:"40W in warm-up, 20W in scarico finale. Resistenza molto bassa.",link:""},
     {id:uid(),nome:"Inclined DB pect fly",zona:"Petto",fase:"Performance",serie:2,rip:"20",rec:"60 sec",mat:"Manubri",pct:"",desc:"Panca inclinata, aprire le braccia con gomiti leggermente flessi controllando la discesa. Risalire contraendo i pettorali.",note:"Controllo eccentrico fondamentale. Evitare apertura eccessiva in fase acuta.",link:"https://youtu.be/JSDpq14vCZ8"},
     {id:uid(),nome:"Bench press DB",zona:"Petto",fase:"Forza resistiva",serie:5,rip:"5",rec:"120 sec",mat:"Manubri",pct:"",desc:"Distensione su panca con manubri. Portare i manubri all'altezza del petto e spingere verticalmente.",note:"Traiettoria neutra. Presa salda.",link:"https://youtu.be/n8CskqpOPek"},
     {id:uid(),nome:"Incline bend over barbell row",zona:"Dorsali",fase:"Performance",serie:5,rip:"4",rec:"120 sec",mat:"Bilanciere",pct:"",desc:"Busto inclinato su panca, rematore con bilanciere verso l'addome. Focalizzarsi sulla retrazione scapolare.",note:"Non iperestendere il rachide. Movimento controllato.",link:"https://www.youtube.com/watch?v=2cGfXlLaJT0"},
@@ -866,9 +862,32 @@ const SB_URL = 'https://oenqgugzmnnggfapuwsr.supabase.co';
 const SB_KEY = 'sb_publishable_3lgvGco73nlx5uZS1ifHCA_FhTsQSGC';
 const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SB_URL, SB_KEY) : null;
 
-let dirty = false;          // ci sono modifiche locali non ancora sincronizzate
+let dirty = false;          // (compatibilità) flag generico; la vera fonte è `pending`
 let syncTimer = null;
 let initialLoadDone = false;
+
+// ---- modifiche in sospeso, tracciate per riga e per campo ----
+// L'app invia a Supabase SOLO ciò che è stato modificato qui dentro. Le righe e le colonne
+// che non hai toccato (es. testi scritti direttamente su Supabase) non vengono mai sovrascritte.
+const PENDING_KEY = 'ps_pending_v2';
+let pending = { es: {}, sc: {} };   // es: { id: ['desc','note'] | ['*'] }   sc: { id: true }
+let editOrig = null;                // copia dell'esercizio com'era all'apertura della finestra di modifica
+function loadPending() {
+  try { pending = JSON.parse(localStorage.getItem(PENDING_KEY)) || pending; } catch (e) {}
+  pending.es = pending.es || {}; pending.sc = pending.sc || {};
+}
+function savePending() { localStorage.setItem(PENDING_KEY, JSON.stringify(pending)); }
+function markEs(id, fields) {       // fields: campi locali modificati, oppure ['*'] per una riga nuova
+  const cur = pending.es[id] || [];
+  pending.es[id] = (cur.includes('*') || fields.includes('*')) ? ['*'] : [...new Set([...cur, ...fields])];
+  savePending();
+}
+function markSc(id) { pending.sc[id] = true; savePending(); }
+function hasPending() {
+  return Object.keys(pending.es).length > 0 || Object.keys(pending.sc).length > 0
+    || JSON.parse(localStorage.getItem('ps_del_esercizi') || '[]').length > 0
+    || JSON.parse(localStorage.getItem('ps_del_schede') || '[]').length > 0;
+}
 
 // ---- mapping locale <-> riga Supabase ----
 function esercizioToRow(e) {
@@ -913,6 +932,7 @@ function loadCache() {
   esercizi = JSON.parse(localStorage.getItem('ps_esercizi') || 'null') || [];
   schede   = JSON.parse(localStorage.getItem('ps_schede')   || 'null') || [];
   dirty    = localStorage.getItem('ps_dirty') === '1';
+  loadPending();
 }
 function cacheNow() {
   localStorage.setItem('ps_esercizi', JSON.stringify(esercizi));
@@ -952,14 +972,38 @@ function scheduleSync() {
 }
 function manualSync() { if (navigator.onLine) syncToSupabase(); else showToast('📴 Nessuna connessione', 2000); }
 
+let syncing = false, syncAgain = false;
 async function syncToSupabase() {
   if (!sb) { setConnState('offline', '⚠️ Supabase non disponibile'); return false; }
   if (!navigator.onLine) { setConnState('offline'); return false; }
+  if (syncing) { syncAgain = true; return true; }
+  syncing = true;
   setConnState('syncing');
   try {
-    if (esercizi.length) {
-      const { error } = await sb.from('esercizi').upsert(esercizi.map(esercizioToRow), { onConflict: 'id' });
+    // esercizi: righe nuove intere; righe esistenti solo i campi modificati
+    const sentEs = JSON.parse(JSON.stringify(pending.es));
+    const newRows = [];
+    for (const [id, fields] of Object.entries(sentEs)) {
+      const e = esercizi.find(x => x.id === id);
+      if (e && fields.includes('*')) newRows.push(esercizioToRow(e));
+    }
+    if (newRows.length) {
+      const { error } = await sb.from('esercizi').upsert(newRows, { onConflict: 'id' });
       if (error) throw error;
+    }
+    for (const [id, fields] of Object.entries(sentEs)) {
+      if (fields.includes('*')) continue;
+      const e = esercizi.find(x => x.id === id);
+      if (!e) continue;
+      const full = esercizioToRow(e), patch = {};
+      fields.forEach(f => { const col = (f === 'desc') ? 'desc_' : f; if (col in full) patch[col] = full[col]; });
+      if (Object.keys(patch).length) {
+        const { error } = await sb.from('esercizi').update(patch).eq('id', id);
+        if (error) throw error;
+      }
+    }
+    for (const [id, fields] of Object.entries(sentEs)) {
+      if (JSON.stringify(pending.es[id]) === JSON.stringify(fields) || !esercizi.some(x => x.id === id)) delete pending.es[id];
     }
     const delE = JSON.parse(localStorage.getItem('ps_del_esercizi') || '[]');
     if (delE.length) {
@@ -967,17 +1011,22 @@ async function syncToSupabase() {
       if (error) throw error;
       localStorage.removeItem('ps_del_esercizi');
     }
-    if (schede.length) {
-      const { error } = await sb.from('schede').upsert(schede.map(schedaToRow), { onConflict: 'id' });
+    // schede: solo quelle nuove o modificate
+    const sentSc = Object.keys(pending.sc);
+    const scRows = schede.filter(s => sentSc.includes(s.id)).map(schedaToRow);
+    if (scRows.length) {
+      const { error } = await sb.from('schede').upsert(scRows, { onConflict: 'id' });
       if (error) throw error;
     }
+    sentSc.forEach(id => { delete pending.sc[id]; });
     const delS = JSON.parse(localStorage.getItem('ps_del_schede') || '[]');
     if (delS.length) {
       const { error } = await sb.from('schede').delete().in('id', delS);
       if (error) throw error;
       localStorage.removeItem('ps_del_schede');
     }
-    setDirty(false);
+    savePending();
+    setDirty(hasPending());
     setConnState('online');
     localStorage.setItem('ps_last_sync', new Date().toISOString());
     return true;
@@ -985,25 +1034,10 @@ async function syncToSupabase() {
     console.error('Errore sync Supabase:', err);
     setConnState('offline', '⚠️ Errore sync');
     return false;
+  } finally {
+    syncing = false;
+    if (syncAgain) { syncAgain = false; syncToSupabase(); }
   }
-}
-
-// ---- Top-up una tantum: aggiunge su Supabase gli esercizi nuovi presenti solo nel seed ----
-// Non sovrascrive nulla: aggiunge solo i nomi che mancano nel database.
-const TOPUP_KEY   = 'ps_topup_2026_09';
-const TOPUP_NAMES = ["Wide Grip Seated Cable Low Row", "Pull down singolo lat machine", "Close Grip Lat Pulldown", "Lawnmover", "Arnold press", "Push press T-band", "TRX Chest Fly", "TRX Chest press", "Lying Eccentric ER", "Windmill", "TRX Y Raise", "Triceps TRX Pressdown", "Push up", "DB Deltoid lateral raise", "DB One-arm triceps extension", "DB French press", "T-band pull down", "TRX Australian pull up", "Landmine lateral single arm row"];
-async function topUpSeed() {
-  if (localStorage.getItem(TOPUP_KEY)) return;
-  const have = new Set(esercizi.map(e => (e.nome || '').trim().toLowerCase()));
-  const add  = seedEsercizi().filter(e => TOPUP_NAMES.includes(e.nome) && !have.has(e.nome.trim().toLowerCase()));
-  if (add.length) {
-    esercizi = esercizi.concat(add);
-    cacheNow();
-    setDirty(true);
-    const ok = await syncToSupabase();
-    if (!ok) return; // riprova al prossimo avvio
-  }
-  localStorage.setItem(TOPUP_KEY, '1');
 }
 
 // ---- caricamento iniziale ----
@@ -1031,9 +1065,16 @@ async function initData() {
     const remoteHasData = (eRows && eRows.length) || (sRows && sRows.length);
 
     if (remoteHasData) {
-      if (dirty) {
+      if (hasPending()) {
         // ci sono modifiche locali non ancora inviate: le spingiamo prima di tirare giù i dati freschi
         await syncToSupabase();
+        if (hasPending()) {
+          // invio non riuscito: teniamo i dati locali per non perdere le modifiche
+          setConnState('offline', '⚠️ Modifiche non ancora inviate');
+          initialLoadDone = true;
+          renderAllPages();
+          return;
+        }
         const [{ data: eRows2 }, { data: sRows2 }] = await Promise.all([
           sb.from('esercizi').select('*'),
           sb.from('schede').select('*')
@@ -1045,11 +1086,12 @@ async function initData() {
         schede   = (sRows || []).map(rowToScheda);
       }
       cacheNow();
-      await topUpSeed();
     } else {
       // Primo avvio assoluto: Supabase è vuoto. Usiamo il seed locale solo come bootstrap
       // e lo carichiamo subito su Supabase, così i prossimi dispositivi leggeranno da lì.
       if (!esercizi.length) esercizi = seedEsercizi();
+      esercizi.forEach(e => markEs(e.id, ['*']));
+      schede.forEach(s => markSc(s.id));
       cacheNow();
       await syncToSupabase();
     }
@@ -1074,6 +1116,35 @@ function renderAllPages() {
   const pazPage = document.getElementById('page-pazienti');
   if (pazPage && pazPage.classList.contains('active')) renderPazienti();
 }
+
+// Quando torni sulla pagina, rilegge da Supabase (così vedi subito anche le modifiche fatte altrove)
+let lastRefresh = 0, refreshing = false;
+async function refreshFromServer(force) {
+  if (!sb || !navigator.onLine || !initialLoadDone || refreshing) return;
+  if (!force && Date.now() - lastRefresh < 15000) return;
+  refreshing = true;
+  try {
+    if (hasPending()) { await syncToSupabase(); if (hasPending()) return; }
+    const [{ data: eRows, error: eErr }, { data: sRows, error: sErr }] = await Promise.all([
+      sb.from('esercizi').select('*'),
+      sb.from('schede').select('*')
+    ]);
+    if (eErr || sErr || !(eRows && eRows.length)) return;
+    if (hasPending()) return;   // nel frattempo sono arrivate modifiche locali: non sovrascriverle
+    esercizi = eRows.map(rowToEsercizio);
+    schede   = (sRows || []).map(rowToScheda);
+    cacheNow();
+    renderAllPages();
+    setConnState('online');
+    lastRefresh = Date.now();
+  } catch (err) {
+    console.error('Errore aggiornamento da Supabase:', err);
+  } finally {
+    refreshing = false;
+  }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromServer(); });
+window.addEventListener('focus', () => refreshFromServer());
 
 window.addEventListener('online', () => { setConnState('syncing'); syncToSupabase(); });
 window.addEventListener('offline', () => { setConnState('offline'); });
@@ -1145,18 +1216,21 @@ function renderEsercizi() {
 }
 
 document.getElementById('btn-nuovo-eserc').onclick = () => {
+  editOrig = null;
   document.getElementById('eserc-edit-id').value='';
   document.getElementById('modal-eserc-title').textContent='Nuovo esercizio';
   ['nome','desc','note','rip','rec','link','pct'].forEach(f=>document.getElementById('e-'+f).value='');
   document.getElementById('e-serie').value=3;
   document.getElementById('e-zona').value='';
   document.getElementById('e-fase').value='';
+  document.querySelectorAll('#e-mat option[data-temp]').forEach(o=>o.remove());
   document.getElementById('e-mat').value='Corpo libero';
   openModal('modal-esercizio');
 };
 
 function editEsercizio(id) {
   const e = esercizi.find(x=>x.id===id); if(!e) return;
+  editOrig = { ...e };
   document.getElementById('eserc-edit-id').value=id;
   document.getElementById('modal-eserc-title').textContent='Modifica esercizio';
   document.getElementById('e-nome').value=e.nome||'';
@@ -1165,7 +1239,14 @@ function editEsercizio(id) {
   document.getElementById('e-serie').value=e.serie||3;
   document.getElementById('e-rip').value=e.rip||'';
   document.getElementById('e-rec').value=e.rec||'';
-  document.getElementById('e-mat').value=e.mat||'Corpo libero';
+  { // se il materiale dell'esercizio non è più in lista (es. "Panca"), lo mantiene per non perderlo al salvataggio
+    const selMat = document.getElementById('e-mat');
+    const cur = e.mat || 'Corpo libero';
+    if (![...selMat.options].some(o => o.value === cur)) {
+      const o = document.createElement('option'); o.textContent = cur; o.dataset.temp = '1'; selMat.appendChild(o);
+    }
+    selMat.value = cur;
+  }
   document.getElementById('e-pct').value=e.pct||'';
   document.getElementById('e-link').value=e.link||'';
   document.getElementById('e-desc').value=e.desc||'';
@@ -1190,14 +1271,28 @@ function salvaEsercizio() {
     desc:document.getElementById('e-desc').value.trim(),
     note:document.getElementById('e-note').value.trim(),
   };
-  if(id) { const i=esercizi.findIndex(x=>x.id===id); esercizi[i]=obj; }
-  else esercizi.push(obj);
+  if (id) {
+    const i = esercizi.findIndex(x => x.id === id);
+    const orig = (editOrig && editOrig.id === id) ? editOrig : (esercizi[i] || {});
+    const changed = ['nome','zona','fase','serie','rip','rec','mat','pct','link','desc','note']
+      .filter(f => String(obj[f] ?? '') !== String(orig[f] ?? ''));
+    if (i >= 0) {
+      changed.forEach(f => { esercizi[i][f] = obj[f]; });   // aggiorna solo i campi davvero modificati
+      if (changed.length) markEs(id, changed);
+    } else {
+      esercizi.push(obj); markEs(id, ['*']);
+    }
+  } else {
+    esercizi.push(obj); markEs(obj.id, ['*']);
+  }
+  editOrig = null;
   saveAll(); closeModal('modal-esercizio'); renderEsercizi();
 }
 
 function delEsercizio(id) {
   if(!confirm('Eliminare questo esercizio?')) return;
   markDeleted('ps_del_esercizi', id);
+  delete pending.es[id]; savePending();
   esercizi=esercizi.filter(x=>x.id!==id); saveAll(); renderEsercizi();
 }
 
@@ -1665,10 +1760,12 @@ function salvaScheda() {
   }
   const risS = buildSchedaHTML(true);
   const snapshot = giorni.map(g => ({ nome: g.nome, esercizi: [...g.esercizi] }));
-  schede.push({
+  const nuovaScheda = {
     id: uid(), ...risS.meta, giorni: snapshot, numGiorni, html: risS.schedaHtml,
     createdAt: new Date().toISOString()
-  });
+  };
+  schede.push(nuovaScheda);
+  markSc(nuovaScheda.id);
   saveAll();
   showToast('✅ Scheda salvata correttamente!');
 }
@@ -1742,6 +1839,7 @@ async function printSaved(id) {
 function delScheda(id) {
   if(!confirm('Eliminare questa scheda?')) return;
   markDeleted('ps_del_schede', id);
+  delete pending.sc[id]; savePending();
   schede=schede.filter(x=>x.id!==id); saveAll(); renderSchede();
 }
 
@@ -2029,6 +2127,7 @@ function salvaModifica() {
   s.numGiorni = modGiorni.length;
   s.html     = htmlNuovo;
   s.updatedAt = new Date().toISOString();
+  markSc(s.id);
 
   saveAll();
   closeModal('modal-modifica');
