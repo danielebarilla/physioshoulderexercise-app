@@ -512,6 +512,7 @@
         <button class="btn btn-honey" onclick="salvaScheda()">💾 Salva scheda</button>
         <button class="btn btn-primary" onclick="anteprimaScheda()">👁 Anteprima</button>
         <button class="btn btn-secondary" onclick="stampaScheda()">🖨 Stampa / PDF</button>
+        <button class="btn btn-secondary" onclick="condividiDaEditor()">📤 Condividi HTML</button>
         <button class="btn btn-danger btn-sm" onclick="resetScheda()">↺ Reset</button>
       </div>
     </div>
@@ -623,6 +624,7 @@
     <hr>
     <div class="btn-group no-print">
       <button class="btn btn-primary" onclick="stampaScheda()">🖨 Stampa / Salva PDF</button>
+      <button class="btn btn-honey" onclick="condividiScheda()">📤 Condividi HTML</button>
       <button class="btn btn-secondary" onclick="closeModal('modal-preview')">Chiudi</button>
     </div>
   </div>
@@ -1750,6 +1752,87 @@ async function stampaScheda() {
   }
 }
 
+// ── CONDIVISIONE HTML (file .html autonomo, con link video cliccabili) ──
+//    Mobile: apre il foglio di condivisione (WhatsApp, Mail, AirDrop...).
+//    Desktop / browser senza supporto: scarica il file .html. ──
+function costruisciDocumentoHtml(contenutoHtml, titolo) {
+  return '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + '<title>' + (titolo || 'Scheda Physio Shoulder') + '</title>'
+    + '<style>' + PRINT_CSS
+    + '@media (max-width:640px){ body{margin:12px auto; padding:0 8px;} .esercizio-row{grid-template-columns:1fr; padding:12px 16px;} .esercizio-params{margin-left:32px;} }'
+    + '</style></head><body>' + contenutoHtml + '</body></html>';
+}
+
+async function condividiHtml(contenutoHtml, titolo) {
+  const doc = costruisciDocumentoHtml(contenutoHtml, titolo);
+  const slug = (titolo || 'scheda').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'scheda';
+  const fileName = slug + '.html';
+  const blob = new Blob([doc], { type: 'text/html' });
+
+  // 1) Foglio di condivisione nativo (iOS / Android)
+  try {
+    const file = new File([blob], fileName, { type: 'text/html' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: titolo || 'Scheda Physio Shoulder' });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // l'utente ha annullato
+    console.warn('Condivisione nativa non riuscita, uso il download:', e);
+  }
+
+  // 2) Fallback: download del file .html
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  showToast('📤 File HTML scaricato', 2500);
+}
+
+async function condividiScheda() {
+  const contenuto = document.getElementById('preview-content').innerHTML;
+  if (!contenuto || !contenuto.trim()) {
+    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
+    return;
+  }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = contenuto;
+  const meta = tmp.querySelector('.scheda-header .meta');
+  const mNome = meta ? meta.textContent.match(/Paziente:\s*(.*?)\s*\|/) : null;
+  const titolo = mNome && mNome[1] ? 'Scheda ' + mNome[1] : 'Scheda Physio Shoulder';
+  try {
+    await condividiHtml(contenuto, titolo);
+  } catch (e) {
+    console.error('Errore condivisione HTML:', e);
+    showToast('⚠️ Errore condivisione HTML', 3000);
+  }
+}
+
+function condividiDaEditor() {
+  if (!giorni.some(g => g.esercizi.length)) {
+    showToast('⚠️ Aggiungi almeno un esercizio', 3000);
+    return;
+  }
+  const ris = buildSchedaHTML(true);
+  document.getElementById('preview-content').innerHTML = ris.schedaHtml;
+  condividiScheda();
+}
+
+async function condividiSaved(id) {
+  const sc = schede.find(x => x.id === id);
+  if (!sc) return;
+  try {
+    await condividiHtml(sc.html, 'Scheda ' + sc.nome);
+  } catch (e) {
+    console.error('Errore condivisione HTML:', e);
+    showToast('⚠️ Errore condivisione HTML', 3000);
+  }
+}
+
 // ── SALVA SCHEDA ────────────────────────────────────────
 function salvaScheda() {
   if (!document.getElementById('g-nome').value.trim()) {
@@ -1807,6 +1890,7 @@ function renderSchede() {
           <button class="btn btn-secondary btn-sm" onclick="viewScheda('${s.id}')">👁 Anteprima</button>
           <button class="btn btn-primary btn-sm" onclick="apriModifica('${s.id}')">✏️ Modifica</button>
           <button class="btn btn-secondary btn-sm" onclick="printSaved('${s.id}')">🖨</button>
+          <button class="btn btn-secondary btn-sm" onclick="condividiSaved('${s.id}')" title="Condividi HTML">📤</button>
           <button class="btn btn-danger btn-sm" onclick="delScheda('${s.id}')">🗑</button>
         </div>
       </div>
